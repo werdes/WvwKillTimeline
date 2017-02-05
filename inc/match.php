@@ -1,6 +1,6 @@
 <?php
-/*error_reporting(0);*/
-error_reporting(E_ALL);
+error_reporting(0);
+// error_reporting(E_ALL);
 header('Content-Type: application/json');
 require_once("config.inc.php");
 require_once("../class/series.class.php");
