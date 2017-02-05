@@ -1,8 +1,10 @@
 var m_oHighchartsKills;
 
 $(function () {
+    new Clipboard('#copy-shortlink');
+    setCurrentMatchlistMainMenu();
     if (getParameterByName('match')) {
-        setAllMatchlist();
+        setSpecificMatch(getParameterByName('match'));
     } else {
         setCurrentMatchlist();
     }
@@ -24,12 +26,10 @@ var ENUM_VIEW = {
 
 function setView(nView) {
     $('#matchlist-container').addClass('hidden');
-    $('#main-chart-container').addClass('hidden');
-    $('#match-statistics-container').addClass('hidden');
+    $('#match').addClass('hidden');
 
     if (nView == ENUM_VIEW.MATCH) {
-        $('#main-chart-container').removeClass('hidden');
-        $('#match-statistics-container').removeClass('hidden');
+        $('#match').removeClass('hidden');
     } else if (nView == ENUM_VIEW.MATCHLIST) {
         $('#matchlist-container').removeClass('hidden');
     }
@@ -61,10 +61,35 @@ function getWorlds(oMatch) {
     aWorlds['green'] = null;
     aWorlds['blue'] = null;
 
-    $.each(oMatch.series, function (cSeriesKey, oSeries) {
+    for (var cSeriesKey in oMatch.series) {
+        var oSeries = oMatch.series[cSeriesKey];
         aWorlds[oSeries.color] = oSeries.world_name;
-    });
+    };
     return aWorlds;
+}
+
+function setSpecificMatch(cRequestedMatchId) {
+    setLoading(true);
+    setView(ENUM_VIEW.NONE);
+
+    $.ajax({
+        url: "inc/matchlist.php?all&" + $.now(),
+        caching: false,
+        dataType: "json",
+        complete: function (oData) {
+            for (var cCurrentMatchId in oData.responseJSON) {
+                var oMatch = oData.responseJSON[cCurrentMatchId];
+                if (oMatch.id == cRequestedMatchId) {
+                    setMatch(oMatch.id, oMatch);
+                    break;
+                }
+            }
+        },
+        error: function (oXhr, cStatus, cError) {
+            $('#message-container').html('<div class="alert alert-danger" role="alert"><b>' + cStatus + '</b><br />' + cError + '</div>');
+            setView(ENUM_VIEW.MATCHLIST);
+        }
+    })
 }
 
 function setAllMatchlist() {
@@ -78,37 +103,31 @@ function setAllMatchlist() {
     $.ajax({
         url: "inc/matchlist.php?all&" + $.now(),
         dataType: "json",
-        complete: function (data) {
+        complete: function (oData) {
 
             setView(ENUM_VIEW.NONE)
-            var oMatchRedirection = null;
-            var cMatchRedirectionParameter = getParameterByName('match');
 
             var cLastStartDate = "";
-            $.each(data.responseJSON, function (cMatchId, oMatch) {
+            for (var cMatchId in oData.responseJSON) {
+
+                var oMatch = oData.responseJSON[cMatchId];
                 var cCurrStartDate = moment(oMatch.start).utc().format('YYYY.MM.DD');
                 if (cCurrStartDate != cLastStartDate) {
                     $(cContainerId).append('<h2>' + moment(oMatch.start).format('DD.MM.YYYY') + ' - ' + moment(oMatch.end).format('DD.MM.YYYY') + '</h2>');
                     cLastStartDate = cCurrStartDate;
                 }
                 setMatchlistMatchContainer(cContainerId, cMatchId, oMatch);
-                if (cMatchRedirectionParameter && cMatchRedirectionParameter == oMatch.id) {
-                    oMatchRedirection = oMatch;
-                }
+            };
 
+            $('div#matchlist-container div.list-group-item a.match-container').click(function () {
+                var cMatchId = $(this).attr('data-match-id');
+                var oMatch = $(this).data('match');
+                setMatch(cMatchId, oMatch);
             });
-            if (oMatchRedirection != null) {
-                setMatch(cMatchRedirectionParameter, oMatchRedirection);
-            } else {
 
-                $('div#matchlist-container div.list-group-item').click(function () {
-                    var cMatchId = $(this).attr('data-match-id');
-                    var oMatch = $(this).data('match');
-                    setMatch(cMatchId, oMatch);
-                });
-                setLoading(false);
-                setView(ENUM_VIEW.MATCHLIST);
-            }
+            setLoading(false);
+            setView(ENUM_VIEW.MATCHLIST);
+
         },
         error: function (oXhr, cStatus, cError) {
             $('#message-container').html('<div class="alert alert-danger" role="alert"><b>' + cStatus + '</b><br />' + cError + '</div>');
@@ -117,22 +136,36 @@ function setAllMatchlist() {
 
 }
 
-function setCurrentMatchlist() {
-    var cContainerId = '#matchlist-container';
+function setCurrentMatchlistMainMenu() {
     var cMenuContainerId = '#menu-current-matchups';
-    $(cContainerId).html("");
-    $(cMenuContainerId).html("");
-
     $.ajax({
         url: "inc/matchlist.php?current&" + $.now(),
         dataType: "json",
-        complete: function (data) {
+        complete: function (oData) {
             setView(ENUM_VIEW.NONE);
 
-            $.each(data.responseJSON, function (cMatchId, oMatch) {
+            for (var cMatchId in oData.responseJSON) {
+                var oMatch = oData.responseJSON[cMatchId];
+                var cTier = oMatch.arenanet_id.split('-')[1];
+                var cRegion = oMatch.arenanet_id.split('-')[0] == "1" ? "NA" : "EU";
 
-                setMatchlistMatchContainer(cContainerId, cMatchId, oMatch, cMenuContainerId);
-            });
+                $(cMenuContainerId).append('<li data-match-id="' + oMatch.id + '" id="menu-' + cMatchId + '"></li>');
+                var cMenuContainer = '<a href="javascript:void(0);"><b>' + cRegion + "</b>/<b>T" + cTier + "</b> ";
+                var i = 0;
+                for (var cWorldId in oMatch.worlds) {
+                    var oWorld = oMatch.worlds[cWorldId];
+                    if (i > 0) {
+                        cMenuContainer += " - ";
+                    }
+                    cMenuContainer += '<i class="famfamfam-flag-' + getFlagShort(oWorld.id) + '"></i> ';
+                    cMenuContainer += oWorld.name;
+
+                    i++;
+                }
+                cMenuContainer += '</a>';
+                $('#menu-' + cMatchId).append(cMenuContainer);
+                $('#menu-' + cMatchId).data('match', oMatch);
+            };
 
 
             $('ul#menu-current-matchups li').click(function () {
@@ -140,7 +173,29 @@ function setCurrentMatchlist() {
                 var oMatch = $(this).data('match');
                 setMatch(cMatchId, oMatch);
             });
-            $('div#matchlist-container div.list-group-item').click(function () {
+
+        },
+        error: function (oXhr, cStatus, cError) {
+            $('#message-container').html('<div class="alert alert-danger" role="alert"><b>' + cStatus + '</b><br />' + cError + '</div>');
+        }
+    });
+}
+
+function setCurrentMatchlist() {
+    var cContainerId = '#matchlist-container';
+    $(cContainerId).html("");
+
+    $.ajax({
+        url: "inc/matchlist.php?current&" + $.now(),
+        dataType: "json",
+        complete: function (oData) {
+            setView(ENUM_VIEW.NONE);
+
+            for (var cMatchId in oData.responseJSON) {
+                setMatchlistMatchContainer(cContainerId, cMatchId, oData.responseJSON[cMatchId]);
+            };
+
+            $('div#matchlist-container div.list-group-item a.match-container').click(function () {
                 var cMatchId = $(this).attr('data-match-id');
                 var oMatch = $(this).data('match');
                 setMatch(cMatchId, oMatch);
@@ -155,46 +210,38 @@ function setCurrentMatchlist() {
     });
 }
 
-function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch, cMenuContainerId) {
+function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
     var cTier = oMatch.arenanet_id.split('-')[1];
     var cRegion = oMatch.arenanet_id.split('-')[0] == "1" ? "NA" : "EU";
 
-    $(cContainerId).append('<div id="' + cMatchId + '" data-match-id="' + oMatch.id + '" class="list-group-item"><div class="matchlist-eyecatcher"><span class="matchlist-region">' + cRegion + '</span><span class="matchlist-tier">Tier ' + cTier + '</span></div></div>');
+    $(cContainerId).append('<div id="' + cMatchId + '" class="list-group-item"><a class="get-shortlink btn btn-default btn-xs pull-right" data-toggle="modal" data-target="#modal-shortlink" role="button" data-match-id="' + oMatch.id + '"><i class="glyphicon glyphicon-link"></i> Shortlink</a><a class="match-container" data-match-id="' + oMatch.id + '"><div class="matchlist-eyecatcher"><span class="matchlist-region">' + cRegion + '</span><span class="matchlist-tier">Tier ' + cTier + '</span></div></div></div>');
 
     var cContainer = '<div class="matchlist-worldlist">';
-    $.each(oMatch.worlds, function (cWorldId, oWorld) {
+
+    for (var cWorldId in oMatch.worlds) {
+        var oWorld = oMatch.worlds[cWorldId];
         cContainer += '<p><b><i class="famfamfam-flag-' + getFlagShort(oWorld.id) + '"></i> ' + oWorld.name + '</b>';
 
         if (oWorld.additional_worlds != null) {
-            $.each(oWorld.additional_worlds, function (cAdditionalWorldId, oAdditionalWorld) {
-                cContainer += ', ' + oAdditionalWorld.name;
-            });
+            for (var cAdditionalWorldId in oWorld.additional_worlds) {
+                cContainer += ', ' + oWorld.additional_worlds[cAdditionalWorldId].name;
+            }
         }
         cContainer += '</p>';
-    });
-    cContainer += "</div>";
-    $("#" + cMatchId).append(cContainer);
-    $('#' + cMatchId).data('match', oMatch);
-
-    if (cMenuContainerId) {
-
-        $(cMenuContainerId).append('<li data-match-id="' + oMatch.id + '" id="menu-' + cMatchId + '"></li>');
-        var cMenuContainer = '<a href="javascript:void(0);"><b>' + cRegion + "</b>/<b>T" + cTier + "</b> ";
-        var i = 0;
-        $.each(oMatch.worlds, function (cWorldId, oWorld) {
-            if (i > 0) {
-                cMenuContainer += " - ";
-            }
-            cMenuContainer += '<i class="famfamfam-flag-' + getFlagShort(oWorld.id) + '"></i> ';
-            cMenuContainer += oWorld.name;
-
-            i++;
-        });
-        cMenuContainer += '</a>';
-        $('#menu-' + cMatchId).append(cMenuContainer);
-        $('#menu-' + cMatchId).data('match', oMatch);
     }
+    cContainer += "</a></div>";
+    $("#" + cMatchId + ' a.match-container').append(cContainer);
+    $('#' + cMatchId + ' a.match-container').data('match', oMatch);
 }
+
+$('#modal-shortlink').on('shown.bs.modal', function (event) {
+    var oSender = $(event.relatedTarget);
+    var cMatchId = oSender.attr('data-match-id');
+    var cShortlink = window.location.href.replace("#", "").split('?')[0] + "?match=" + cMatchId;
+
+    $('#shortlink-textbox').val(cShortlink);
+    $('#shortlink-textbox').select();
+})
 
 
 function setMatch(cMatchId, oMatchlistMatch) {
@@ -216,19 +263,23 @@ function setMatch(cMatchId, oMatchlistMatch) {
             var nKillsMax = 0;
             var nDeathsMin = 0;
 
+            $('div#match > a.get-shortlink').attr('data-match-id', oMatchlistMatch.id);
+
             m_oHighchartsKills.setTitle({
                 text: aWorlds['green'] + " / " + aWorlds['blue'] + " / " + aWorlds['red']
             });
 
             var nSeriesItemIndex = 0;
             var oFirstSeries = oMatch.series[Object.keys(oMatch.series)[0]];
-            $.each(oFirstSeries.series_items, function (cSeriesItemKey, oSeriesItem) {
+            for (var cSeriesItemKey in oFirstSeries.series_items) {
+                var oSeriesItem = oFirstSeries.series_items[cSeriesItemKey];
                 var nSumKills = 0;
                 var nSumDeaths = 0;
-                $.each(oMatch.series, function (cSeriesKey, oSeries) {
+                for (var cSeriesKey in oMatch.series) {
+                    oSeries = oMatch.series[cSeriesKey];
                     nSumKills += parseInt(oSeries.series_items[nSeriesItemIndex].kills);
                     nSumDeaths += parseInt(oSeries.series_items[nSeriesItemIndex].deaths);
-                });
+                };
                 if (nSumKills > nKillsMax) {
                     nKillsMax = nSumKills;
                 }
@@ -237,7 +288,7 @@ function setMatch(cMatchId, oMatchlistMatch) {
                 }
 
                 nSeriesItemIndex++;
-            });
+            }
 
             var nMax = nKillsMax;
             if (nDeathsMin > nMax) {
@@ -255,15 +306,15 @@ function setMatch(cMatchId, oMatchlistMatch) {
             });
 
 
-            $.each(oMatch.series, function (cSeriesKey, oSeries) {
-                setSeries(oSeries, aWorlds, aMaps, i, "Kills");
+            for (var cSeriesKey in oMatch.series) {
+                setSeries(oMatch.series[cSeriesKey], aWorlds, aMaps, i, "Kills");
                 i++;
-            });
+            };
 
-            $.each(oMatch.series, function (cSeriesKey, oSeries) {
-                setSeries(oSeries, aWorlds, aMaps, i, "Deaths");
+            for (var cSeriesKey in oMatch.series) {
+                setSeries(oMatch.series[cSeriesKey], aWorlds, aMaps, i, "Deaths");
                 i++;
-            });
+            };
 
             //Statistik
             setMatchStatistics(oMatch, oMatchlistMatch);
@@ -289,7 +340,8 @@ function setSeries(oSeries, aWorlds, aMaps, i, cDeathsKills) {
         step: 'center',
         color: getMapChartColor(oSeries.color, oSeries.map_id, bDeaths),
     });
-    $.each(oSeries.series_items, function (cSeriesItemKey, oSeriesItem) {
+    for (var cSeriesItemKey in oSeries.series_items) {
+        var oSeriesItem = oSeries.series_items[cSeriesItemKey];
         var nValue = bDeaths ? (parseInt(oSeriesItem.deaths) * -1) : (parseInt(oSeriesItem.kills));
         m_oHighchartsKills.series[i].addPoint({
             x: Date.parse(oSeriesItem.timeslot_start),
@@ -301,7 +353,7 @@ function setSeries(oSeries, aWorlds, aMaps, i, cDeathsKills) {
             deaths: parseInt(oSeriesItem.deaths)
         }, false);
 
-    });
+    };
 }
 
 function setMatchStatistics(oMatch, oMatchlistMatch) {
@@ -311,7 +363,8 @@ function setMatchStatistics(oMatch, oMatchlistMatch) {
 
     $(cContainerId).html('');
 
-    $.each(oMatch.series, function (cSeriesKey, oSeries) {
+    for (var cSeriesKey in oMatch.series) {
+        var oSeries = oMatch.series[cSeriesKey];
         var cKey = oSeries.world_id; // + '_' + oSeries.color;
         if (typeof aWorlds[cKey] === 'undefined') {
             aWorlds[cKey] = {
@@ -327,18 +380,19 @@ function setMatchStatistics(oMatch, oMatchlistMatch) {
             deaths: 0
         };
 
-        $.each(oSeries.series_items, function (cSeriesItemKey, oSeriesItem) {
+        for (var cSeriesItemKey in oSeries.series_items) {
+            var oSeriesItem = oSeries.series_items[cSeriesItemKey];
             aWorlds[cKey].maps[oSeries.map_id].kills += parseInt(oSeriesItem.kills);
             aWorlds[cKey].maps[oSeries.map_id].deaths += parseInt(oSeriesItem.deaths);
-        });
-    });
+        };
+    }
 
 
     var cContainerContent = '<div class="row">';
     for (var cWorldKey in aWorlds) {
         oWorld = aWorlds[cWorldKey];
-        cContainerContent += '<div class="col-md-4 world-container">';
-        cContainerContent += '<div class="row"><div class="col-md-9"><h4>' + oWorld.world_name + '</h4></div><div class="col-md-3 world-kd ' + oWorld.world_id + '"><h4>&empty;1.00</h4></div></div><h6>';
+        cContainerContent += '<div class="col-md-4 world-container ' + oWorld.world_id + '" data-world-name="' + oWorld.world_name + '">';
+        cContainerContent += '<div class="row"><div class="col-md-9"><h4>' + oWorld.world_name + '</h4><span class="copy-statistics copy-' + oWorld.world_id + '" title="Copy statistics to clipboard"><i class="glyphicon glyphicon-copy"></i></span></div><div class="col-md-3 world-kd ' + oWorld.world_id + '"><h4>&empty;1.00</h4></div></div><h6>';
 
         var i = 0;
         for (var cAddtionalWorldKey in oMatchlistMatch.worlds[oWorld.color].additional_worlds) {
@@ -357,7 +411,7 @@ function setMatchStatistics(oMatch, oMatchlistMatch) {
 
             var aWidths = getWidths(parseInt(oMap.kills), parseInt(oMap.deaths));
 
-            cContainerContent += '<div class="row kd" data-kills="' + oMap.kills + '" data-deaths="' + oMap.deaths + '" data-world="' + oWorld.world_id + '">';
+            cContainerContent += '<div class="row kd" data-kills="' + oMap.kills + '" data-deaths="' + oMap.deaths + '" data-world="' + oWorld.world_id + '" data-map-id="' + cMapId + '" data-color="' + aWorldColors[oMap.map_id] + '" data-world-name="' + oWorld.world_name + '" data-map-name="' + cMapName + '">';
 
             cContainerContent += '<div class="col-md-2" style="color: ' + aWorldColors[oMap.map_id] + '">' + cMapName + '</div><div class="col-md-7"><div class="progress"><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' kills" title="kills" role="progressbar" style="width: ' + aWidths[0] + '%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, false) + ';"  >' + oMap.kills + '</div><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' deaths" style="width: ' + aWidths[1] + '%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, true) + ';" title="deaths">' + oMap.deaths + '</div></div></div><div class="col-md-3 ' + cMapId + ' ' + oWorld.world_id + ' kdr">&empty;' + cKDR + '</div>';
 
@@ -369,11 +423,51 @@ function setMatchStatistics(oMatch, oMatchlistMatch) {
 
     $(cContainerId).append(cContainerContent);
 
-    for(var cWorldKey in aWorlds) {
-        for(var cMap in aWorlds[cWorldKey].maps) {
+    $('span.copy-statistics').click(function () {
+        $(this).addClass('highlight');
+        setTimeout(function () {
+            $('.highlight').removeClass('highlight');
+        }, 1000);
+    })
+    for (var cWorldKey in aWorlds) {
+        for (var cMap in aWorlds[cWorldKey].maps) {
             setWorldKdr(aWorlds[cWorldKey].world_id, aWorlds[cWorldKey].maps[cMap].kills, aWorlds[cWorldKey].maps[cMap].deaths);
         }
+
+        $('.copy-' + aWorlds[cWorldKey].world_id).attr('data-clipboard-text', getClipboardWorld(aWorlds[cWorldKey].world_id));
+        new Clipboard('.copy-' + aWorlds[cWorldKey].world_id);
     }
+}
+
+function getClipboardWorld(nWorldId) {
+    var nFullDeaths = 0;
+    var nFullKills = 0;
+    var aMaps = new Array();
+    var cWorldName = $('.world-container.' + nWorldId).attr('data-world-name');
+
+    $('.world-container.' + nWorldId).children('.row.kd').each(function () {
+        var nKills = parseInt($(this).attr('data-kills'));
+        var nDeaths = parseInt($(this).attr('data-deaths'));
+        var cWorld = $(this).attr('data-world-name');
+        var cMap = $(this).attr('data-map-name');
+        var cColor = $(this).attr('data-color');
+
+        nFullDeaths += nDeaths;
+        nFullKills += nKills;
+
+        var cOutput = getKdr(nKills, nDeaths) + ' k/d (' + nKills + '/' + nDeaths + ') on ';
+        if (cColor.indexOf('#') == -1) {
+            cOutput += cColor.toProperCase() + " ";
+        }
+        cOutput += cMap;
+
+        aMaps.push(cOutput);
+    });
+
+
+    var cWorldOverall = cWorldName + ": " + getKdr(nFullKills, nFullDeaths) + ' k/d (' + nFullKills + '/' + nFullDeaths + ') | ';
+
+    return cWorldOverall + aMaps.join(' | ');
 }
 
 //Resets all Chart series
@@ -562,7 +656,7 @@ Highcharts.Point.prototype.tooltipFormatter = function (bUseHeader) {
     var cKDR = getKdr(oPoint.kills, oPoint.deaths);
 
     var aWidths = getWidths(oPoint.kills, oPoint.deaths);
-    
+
 
     $(cSelectorKills).text(oPoint.kills);
     $(cSelectorDeaths).text(oPoint.deaths);
@@ -649,8 +743,7 @@ function setWorldKdr(nWorld, nKills, nDeaths) {
         $(cSelectorWorld).attr('data-kills', 0);
         $(cSelectorWorld).attr('data-deaths', 0);
         nCount = 0;
-    }
-    else {
+    } else {
         nCount = parseInt(nCount);
     }
 
@@ -672,3 +765,9 @@ function setWorldKdr(nWorld, nKills, nDeaths) {
 
     }
 }
+
+String.prototype.toProperCase = function () {
+    return this.replace(/\w\S*/g, function (txt) {
+        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    });
+};

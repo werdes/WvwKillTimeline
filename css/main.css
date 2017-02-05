@@ -165,12 +165,36 @@ div.matchlist-worldlist span.world-color {
   display: none;
 }
 
+a.match-container {
+  color: #333;
+  text-decoration: none;
+  display: block;
+  width: 100%;
+}
+
 h3#headline {
   cursor: pointer;
 }
 
-div.world-container > h4 {
+div.world-container>h4 {
   font-weight: bold;
+}
+
+div#match>a.get-shortlink {
+  margin-bottom: 10px;
+}
+
+div.world-container h4 {
+  display: inline;
+  margin-right: 10px;
+}
+
+span.copy-statistics {
+  cursor: pointer;
+}
+
+input.clipboard {
+  display: none;
 }
 
 .spinner {
@@ -178,6 +202,11 @@ div.world-container > h4 {
   height: 40px;
   position: relative;
   margin: 100px auto;
+}
+
+.highlight {
+  color: yellowgreen;
+  text-shadow: 1px 1px 1px white;
 }
 
 .double-bounce1,
