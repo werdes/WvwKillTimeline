@@ -6,11 +6,5 @@
         "**/.hg": true,
         "**/.DS_Store": true
     },
-    "editor.formatOnSave": true,
-    "emeraldwalk.runonsave": {
-        "commands": [{
-            "match": "*.css",
-            "cmd": "echo minify"
-        }]
-    }
+    "editor.formatOnSave": true
 }
