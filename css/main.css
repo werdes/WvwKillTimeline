@@ -124,8 +124,13 @@ div.matchlist-eyecatcher {
   display: inline-block;
 }
 
+div.matchlist-world-container {
+  position: relative;
+  top: 2px;
+}
+
 div.matchlist-eyecatcher span.matchlist-region {
-  font-size: 35pt;
+  font-size: 30pt;
   font-weight: bold;
   color: #ddd;
   text-align: right;
@@ -134,17 +139,13 @@ div.matchlist-eyecatcher span.matchlist-region {
 }
 
 div.matchlist-eyecatcher span.matchlist-tier {
-  font-size: 18pt;
+  font-size: 13pt;
   font-weight: bold;
   color: #ddd;
   margin-top: -16px;
   text-align: right;
   padding-right: 15px;
   display: block;
-}
-
-div.matchlist-worldlist {
-  display: inline-block;
 }
 
 div#matchlist-container div.list-group-item:hover {
@@ -170,6 +171,8 @@ a.match-container {
   text-decoration: none;
   display: block;
   width: 100%;
+  margin-left: 10px;
+  margin-top: 5px;
 }
 
 h3#headline {

@@ -17,7 +17,7 @@ if(defined("DB_HOST") && defined("DB_USER") && defined("DB_PASSWORD") && defined
                 $cWhereClause = "where UTC_TIMESTAMP BETWEEN `match`.start_time AND `match`.end_time ";
             }
             
-            $cSqlStatement = "SELECT world.arenanet_id as world_id, world.name as world_name, `match`.id as match_id, `match`.arenanet_id as match_arenanet_id, `match`.start_time as match_start, `match`.end_time as match_end, match_worlds.color, match_worlds.host from match_worlds inner join world on world.id = match_worlds.world_id inner join `match` on `match`.id = match_worlds.match_id " . $cWhereClause . " ORDER BY `match`.start_time desc, `match`.arenanet_id asc, match_worlds.color asc, match_worlds.host desc";
+            $cSqlStatement = "SELECT world.arenanet_id as world_id, world.name as world_name, `match`.id as match_id, `match`.arenanet_id as match_arenanet_id, `match`.start_time as match_start, `match`.end_time as match_end, match_worlds.color, match_worlds.host, (select sum(kills) from timeslot_kills where timeslot_kills.match_worlds_id = match_worlds.id) as kills, (select sum(deaths) from timeslot_kills where timeslot_kills.match_worlds_id = match_worlds.id) as deaths  from match_worlds inner join world on world.id = match_worlds.world_id inner join `match` on `match`.id = match_worlds.match_id " . $cWhereClause . " ORDER BY `match`.start_time desc, `match`.arenanet_id asc, match_worlds.color asc, match_worlds.host desc";
             
             $oSqlQuery = $oConnection->query($cSqlStatement);
             if($oSqlQuery) {
@@ -40,8 +40,10 @@ if(defined("DB_HOST") && defined("DB_USER") && defined("DB_PASSWORD") && defined
                         $oWorld->host = $oRow->host;
                         $oWorld->color = $oRow->color;
                         $oWorld->name = $oRow->world_name;
+                        $oWorld->kills = $oRow->kills;
+                        $oWorld->deaths = $oRow->deaths;
                         
-                        $aAusgabe[$cMatchKey]->worlds[$oRow->color] = $oWorld;  
+                        $aAusgabe[$cMatchKey]->worlds[$oRow->color] = $oWorld;
                     }
                     else {
                         //$aAusgabe[$cMatchKey]->worlds[$oRow->color]->additional_worlds = array();
@@ -50,7 +52,7 @@ if(defined("DB_HOST") && defined("DB_USER") && defined("DB_PASSWORD") && defined
                         $oWorld->host = $oRow->host;
                         $oWorld->color = $oRow->color;
                         $oWorld->name = $oRow->world_name;
-
+                        
                         $aAusgabe[$cMatchKey]->worlds[$oRow->color]->additional_worlds[$oRow->world_id] = $oWorld;
                     }
                     

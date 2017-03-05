@@ -142,7 +142,6 @@ function setCurrentMatchlistMainMenu() {
         url: "inc/matchlist.php?current&" + $.now(),
         dataType: "json",
         complete: function (oData) {
-            setView(ENUM_VIEW.NONE);
 
             for (var cMatchId in oData.responseJSON) {
                 var oMatch = oData.responseJSON[cMatchId];
@@ -214,20 +213,27 @@ function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
     var cTier = oMatch.arenanet_id.split('-')[1];
     var cRegion = oMatch.arenanet_id.split('-')[0] == "1" ? "NA" : "EU";
 
-    $(cContainerId).append('<div id="' + cMatchId + '" class="list-group-item"><a class="get-shortlink btn btn-default btn-xs pull-right" data-toggle="modal" data-target="#modal-shortlink" role="button" data-match-id="' + oMatch.id + '"><i class="glyphicon glyphicon-link"></i> Shortlink</a><a class="match-container" data-match-id="' + oMatch.id + '"><div class="matchlist-eyecatcher"><span class="matchlist-region">' + cRegion + '</span><span class="matchlist-tier">Tier ' + cTier + '</span></div></div></div>');
+    $(cContainerId).append('<div id="' + cMatchId + '" class="list-group-item"><div class="row"><div class="col-md-1"><div class="matchlist-eyecatcher"><span class="matchlist-region">' + cRegion + '</span><span class="matchlist-tier">Tier ' + cTier + '</span></div></div><div class="col-md-10"><a class="match-container" data-match-id="' + oMatch.id + '"></a></div><div class="col-md-1"><a class="get-shortlink btn btn-default btn-xs pull-right" data-toggle="modal" data-target="#modal-shortlink" role="button" data-match-id="' + oMatch.id + '"><i class="glyphicon glyphicon-link"></i> Shortlink</a></div></div></div>');
 
     var cContainer = '<div class="matchlist-worldlist">';
 
     for (var cWorldId in oMatch.worlds) {
         var oWorld = oMatch.worlds[cWorldId];
-        cContainer += '<p><b><i class="famfamfam-flag-' + getFlagShort(oWorld.id) + '"></i> ' + oWorld.name + '</b>';
+        var nKD = parseInt(oWorld.kills) / parseInt(oWorld.deaths);
+        var cLabelClass = nKD >= 1 ? "success" : "danger";
+        cContainer += '<div class="row"><div class="col-md-1">';
+
+        cContainer += '<span title="Kills: ' + oWorld.kills + ' / Deaths: ' + oWorld.deaths + '" class="label label-' + cLabelClass + '">KD: ' + getKdr(oWorld.kills, oWorld.deaths) + '</span>';
+
+
+        cContainer += '</div><div class="col-md-11 matchlist-world-container"><b><i class="famfamfam-flag-' + getFlagShort(oWorld.id) + '"></i> ' + oWorld.name + '</b>';
 
         if (oWorld.additional_worlds != null) {
             for (var cAdditionalWorldId in oWorld.additional_worlds) {
                 cContainer += ', ' + oWorld.additional_worlds[cAdditionalWorldId].name;
             }
         }
-        cContainer += '</p>';
+        cContainer += '</div></div>';
     }
     cContainer += "</a></div>";
     $("#" + cMatchId + ' a.match-container').append(cContainer);
