@@ -191,6 +191,10 @@ div#match>a.get-shortlink {
   margin-bottom: 10px;
 }
 
+div.list-group-item a.get-shortlink {
+  margin-top: 10px;
+}
+
 div.world-container h4 {
   display: inline;
   margin-right: 10px;
