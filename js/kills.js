@@ -325,6 +325,9 @@ function setMatch(cMatchId, oMatchlistMatch) {
             //Statistik
             setMatchStatistics(oMatch, oMatchlistMatch);
 
+            $('#reload-chart').attr('data-match-id', cMatchId);
+            $('#reload-chart').data('match', oMatchlistMatch);
+
             m_oHighchartsKills.redraw();
             setLoading(false);
 
@@ -336,6 +339,15 @@ function setMatch(cMatchId, oMatchlistMatch) {
         }
     })
 }
+
+$('#reload-chart').click(function () {
+
+    var oMatch = $(this).data('match');
+    var cMatchId = $(this).attr('data-match-id');
+
+    setMatch(cMatchId, oMatch);
+
+});
 
 function setSeries(oSeries, aWorlds, aMaps, i, cDeathsKills) {
     var bDeaths = cDeathsKills == "Deaths";

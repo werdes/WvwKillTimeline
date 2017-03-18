@@ -49,6 +49,8 @@
     </div>
     <div class="hidden" id="match">
       <a class="get-shortlink btn btn-success pull-right" data-toggle="modal" data-target="#modal-shortlink" role="button"><i class="glyphicon glyphicon-link"></i> Get Shortlink</a>
+      <a class="reload-chart btn btn-primary pull-right" role="button" id="reload-chart"><i class="glyphicon glyphicon-refresh"></i> Refresh</a>
+
       <div class="clearfix"></div>
       <div class="well" id="match-statistics-container">
       </div>
@@ -64,7 +66,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-          <h4 class="modal-title" id="myModalLabel">Shortlink</h4>
+          <h4 class="modal-title" id="modal-shortlink-label">Shortlink</h4>
         </div>
         <div class="modal-body">
           <input type="text" class="form-control" id="shortlink-textbox">

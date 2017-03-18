@@ -187,6 +187,10 @@ div.world-container>h4 {
   font-weight: bold;
 }
 
+a.btn.reload-chart {
+  margin-right: 10px;
+}
+
 div#match>a.get-shortlink {
   margin-bottom: 10px;
 }
