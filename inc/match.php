@@ -16,7 +16,7 @@ if(defined("DB_HOST") && defined("DB_USER") && defined("DB_PASSWORD") && defined
         $oMatch->series = array();
         
         if(!$oConnection->connect_errno) {
-            $cSqlStatement = "SELECT timeslot_kills.map_id, timeslot_kills.kills, timeslot_kills.deaths, match_worlds.color, `match`.arenanet_id as match_id, `match`.start_time AS match_start, `match`.end_time AS match_end, world.arenanet_id AS world_id, world.name as world_name, timeslot.start_time AS timeslot_start, timeslot.end_time AS timeslot_end FROM timeslot_kills INNER JOIN timeslot ON timeslot_kills.timeslot_id = timeslot.id INNER JOIN match_worlds ON timeslot_kills.match_worlds_id = match_worlds.id INNER JOIN world ON match_worlds.world_id = world.id INNER JOIN `match` ON match_worlds.match_id = `match`.id WHERE `match`.id = " . $oConnection->real_escape_string($_GET["match_id"]) . " AND timeslot.`errors` = 0 ORDER BY timeslot.id ASC, match_worlds.color ASC, timeslot_kills.map_id ASC";
+            $cSqlStatement = "SELECT timeslot_kills.map_id, timeslot_kills.kills, timeslot_kills.deaths, match_worlds.color, `match`.arenanet_id as match_id, `match`.start_time AS match_start, `match`.end_time AS match_end, world.arenanet_id AS world_id, world.name as world_name, timeslot.start_time AS timeslot_start, timeslot.end_time AS timeslot_end, timeslot.`errors` as timeslot_errors FROM timeslot_kills INNER JOIN timeslot ON timeslot_kills.timeslot_id = timeslot.id INNER JOIN match_worlds ON timeslot_kills.match_worlds_id = match_worlds.id INNER JOIN world ON match_worlds.world_id = world.id INNER JOIN `match` ON match_worlds.match_id = `match`.id WHERE `match`.id = " . $oConnection->real_escape_string($_GET["match_id"]) . " ORDER BY timeslot.id ASC, match_worlds.color ASC, timeslot_kills.map_id ASC";
             
             $oSqlQuery = $oConnection->query($cSqlStatement);
             
@@ -41,8 +41,17 @@ if(defined("DB_HOST") && defined("DB_USER") && defined("DB_PASSWORD") && defined
                 $oSeriesItem = new series_item();
                 $oSeriesItem->timeslot_start = $oItem->timeslot_start;
                 $oSeriesItem->timeslot_end = $oItem->timeslot_end;
-                $oSeriesItem->kills = $oItem->kills;
-                $oSeriesItem->deaths = $oItem->deaths;
+                
+                if($oItem->errors == 0) {
+                    $oSeriesItem->kills = $oItem->kills;
+                    $oSeriesItem->deaths = $oItem->deaths;
+                    $oSeriesItem->error = false;
+                } else {
+                    $oSeriesItem->kills = 0;
+                    $oSeriesItem->deaths = 0;
+                    $oSeriesItem->error = true;
+                }
+                
                 
                 array_push($oMatch->series[$cKey]->series_items, $oSeriesItem);
             }
