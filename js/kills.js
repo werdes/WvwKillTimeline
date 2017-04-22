@@ -813,7 +813,6 @@ $('#matchlist-search').on('input', function () {
 });
 
 $('#matchlist-search').keyup(function (e) {
-    console.log(e.keyCode);
     if (e.keyCode == 27) {
         $(this).val('');
         $('#matchlist-container > div').removeClass('hidden');
