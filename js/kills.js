@@ -25,13 +25,14 @@ var ENUM_VIEW = {
 }
 
 function setView(nView) {
-    $('#matchlist-container').addClass('hidden');
+    $('#matchlist').addClass('hidden');
     $('#match').addClass('hidden');
+    $('#matchlist-search').val('');
 
     if (nView == ENUM_VIEW.MATCH) {
         $('#match').removeClass('hidden');
     } else if (nView == ENUM_VIEW.MATCHLIST) {
-        $('#matchlist-container').removeClass('hidden');
+        $('#matchlist').removeClass('hidden');
     }
 }
 
@@ -113,7 +114,7 @@ function setAllMatchlist() {
                 var oMatch = oData.responseJSON[cMatchId];
                 var cCurrStartDate = moment(oMatch.start).utc().format('YYYY.MM.DD');
                 if (cCurrStartDate != cLastStartDate) {
-                    $(cContainerId).append('<h2>' + moment(oMatch.start).format('DD.MM.YYYY') + ' - ' + moment(oMatch.end).format('DD.MM.YYYY') + '</h2>');
+                    $(cContainerId).append('<h2>' + moment(oMatch.start).format('YYYY.MM.DD') + ' - ' + moment(oMatch.end).format('YYYY.MM.DD') + '</h2>');
                     cLastStartDate = cCurrStartDate;
                 }
                 setMatchlistMatchContainer(cContainerId, cMatchId, oMatch);
@@ -183,6 +184,7 @@ function setCurrentMatchlistMainMenu() {
 function setCurrentMatchlist() {
     var cContainerId = '#matchlist-container';
     $(cContainerId).html("");
+    setLoading(true);
 
     $.ajax({
         url: "inc/matchlist.php?current&" + $.now(),
@@ -213,6 +215,15 @@ function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
     var cTier = oMatch.arenanet_id.split('-')[1];
     var cRegion = oMatch.arenanet_id.split('-')[0] == "1" ? "NA" : "EU";
 
+    var aSearchQuery = new Array();
+    aSearchQuery.push("T" + cTier);
+    aSearchQuery.push("Tier" + cTier);
+    aSearchQuery.push(cRegion);
+    aSearchQuery.push(oMatch.start);
+    aSearchQuery.push(oMatch.end);
+    aSearchQuery.push(moment(oMatch.start).format('YYYY.MM.DD'));
+    aSearchQuery.push(moment(oMatch.end).format('YYYY.MM.DD'));
+
     $(cContainerId).append('<div id="' + cMatchId + '" class="list-group-item"><div class="row"><div class="col-md-1"><div class="matchlist-eyecatcher"><span class="matchlist-region">' + cRegion + '</span><span class="matchlist-tier">Tier ' + cTier + '</span></div></div><div class="col-md-10"><a class="match-container" data-match-id="' + oMatch.id + '"></a></div><div class="col-md-1"><a class="get-shortlink btn btn-default btn-xs pull-right" data-toggle="modal" data-target="#modal-shortlink" role="button" data-match-id="' + oMatch.id + '"><i class="glyphicon glyphicon-link"></i> Shortlink</a></div></div></div>');
 
     var cContainer = '<div class="matchlist-worldlist">';
@@ -228,9 +239,13 @@ function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
 
         cContainer += '</div><div class="col-md-11 matchlist-world-container"><b><i class="famfamfam-flag-' + getFlagShort(oWorld.id) + '"></i> ' + oWorld.name + '</b>';
 
+        aSearchQuery.push(oWorld.name);
+
         if (oWorld.additional_worlds != null) {
             for (var cAdditionalWorldId in oWorld.additional_worlds) {
                 cContainer += ', ' + oWorld.additional_worlds[cAdditionalWorldId].name;
+
+                aSearchQuery.push(oWorld.additional_worlds[cAdditionalWorldId].name);
             }
         }
         cContainer += '</div></div>';
@@ -238,6 +253,7 @@ function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
     cContainer += "</a></div>";
     $("#" + cMatchId + ' a.match-container').append(cContainer);
     $('#' + cMatchId + ' a.match-container').data('match', oMatch);
+    $('#' + cMatchId).attr('data-search-query', aSearchQuery.join('#'));
 }
 
 $('#modal-shortlink').on('shown.bs.modal', function (event) {
@@ -783,6 +799,18 @@ function setWorldKdr(nWorld, nKills, nDeaths) {
 
     }
 }
+
+$('#matchlist-search').on('input', function () {
+    var cQuery = $(this).val().toUpperCase();
+
+    $('#matchlist-container > div').removeClass('hidden');
+    $('#matchlist-container > div').each(function () {
+        var cItem = $(this).attr('data-search-query').toUpperCase();
+        if (cItem.indexOf(cQuery) == -1) {
+            $(this).addClass('hidden');
+        }
+    });
+});
 
 String.prototype.toProperCase = function () {
     return this.replace(/\w\S*/g, function (txt) {

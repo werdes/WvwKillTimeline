@@ -224,6 +224,14 @@ input.clipboard {
   text-shadow: 1px 1px 1px white;
 }
 
+.clear-both {
+  clear: both;
+}
+
+.matchlist-search {
+  margin-top: -15px;
+}
+
 .double-bounce1,
 .double-bounce2 {
   width: 100%;
