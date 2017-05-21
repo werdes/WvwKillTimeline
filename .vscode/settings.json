@@ -6,15 +6,5 @@
         "**/.hg": true,
         "**/.DS_Store": true
     },
-    "editor.formatOnSave": true,
-    "deploy": {
-        "type": "ftp",
-        "name": "My FTP folder",
-        "description": "A FTP folder",
-        "dir": "/my_package_files",
-        "host": "localhost",
-        "port": 21,
-        "user": "anonymous",
-        "password": "ayes",
-    }
+    "editor.formatOnSave": true
 }
