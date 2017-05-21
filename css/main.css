@@ -152,6 +152,11 @@ div.list-group-item {
   padding: 2px 15px 10px 15px;
 }
 
+div#matchlist {
+  padding-left: 0px;
+  padding-right: 30px;
+}
+
 div#matchlist-container div.list-group-item:hover {
   background-color: #eee;
   cursor: pointer;
