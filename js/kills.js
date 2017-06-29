@@ -184,6 +184,7 @@ function setCurrentMatchlistMainMenu() {
 function setCurrentMatchlist() {
     var cContainerId = '#matchlist-container';
     $(cContainerId).html("");
+    setView(ENUM_VIEW.NONE);
     setLoading(true);
 
     $.ajax({
@@ -372,7 +373,7 @@ function setSeries(oSeries, aWorlds, aMaps, i, cDeathsKills) {
         yAxis: bDeaths ? 0 : 1,
         type: 'area',
         step: 'center',
-        color: getMapChartColor(oSeries.color, oSeries.map_id, bDeaths),
+        color: getMapChartColor(oSeries.color, oSeries.map_id, bDeaths)
     });
     for (var cSeriesItemKey in oSeries.series_items) {
         var oSeriesItem = oSeries.series_items[cSeriesItemKey];
@@ -519,23 +520,14 @@ function getFlagShort(cWorldId) {
     switch (cLeft2) {
         case "10":
             return "us";
-            break;
-
         case "20":
             return "eu";
-            break;
-
         case "21":
             return "fr";
-            break;
-
         case "22":
             return "de";
-            break;
-
         case "23":
             return "es";
-            break;
     }
 }
 
@@ -556,16 +548,28 @@ function getChartOptions() {
             backgroundColor: 'transparent',
             renderTo: 'main-chart-container',
             height: 500,
-            zoomType: 'xy'
+            zoomType: 'xy',
+            spacingLeft: 0,
+            spacingRight: 0
         },
         rangeSelector: {
             enabled: false
+        },
+        scrollbar: {
+            liveRedraw: false
+        },
+        navigator: {
+            adaptToUpdatedData: false
         },
         xAxis: {
             type: 'datetime',
             range: 24 * 60 * 60 * 1000,
             labels: {
-                align: 'left'
+                align: 'left',
+                formatter: function () {
+                    var oCorrectedDate = moment(this.value).add(15, 'minutes').format("HH:mm");
+                    return oCorrectedDate;
+                }
             }
         },
         title: {
@@ -587,9 +591,6 @@ function getChartOptions() {
             },
             {
                 allowDecimals: false,
-                title: {
-                    text: 'kills / deaths'
-                },
                 opposite: true,
                 gridLineWidth: 0,
                 labels: {
@@ -621,6 +622,7 @@ function S4() {
 
 function getMapChartColor(cColor, nMapId, bDeaths) {
     var nShade = 0;
+    var nIntensity = 1;
     switch (nMapId) {
         case "34":
             nShade = 0.09;
@@ -636,6 +638,8 @@ function getMapChartColor(cColor, nMapId, bDeaths) {
             nShade = 0.45;
             break;
     }
+
+    nShade *= nIntensity;
 
     if (bDeaths) {
         nShade = -0.75 + nShade;
@@ -710,7 +714,7 @@ Highcharts.Point.prototype.tooltipFormatter = function (bUseHeader) {
 $('#main-chart-container').mouseleave(function () {
     $('.row.kd').each(function () {
         setTotalNumbersInStatistics(this);
-    })
+    });
 });
 
 function setTotalNumbersInStatistics(oHandler) {
