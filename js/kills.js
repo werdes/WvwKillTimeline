@@ -1,4 +1,5 @@
 var m_oHighchartsKills;
+var m_bDebug = true;
 
 $(function () {
     new Clipboard('#copy-shortlink');
@@ -215,6 +216,7 @@ function setCurrentMatchlist() {
 function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
     var cTier = oMatch.arenanet_id.split('-')[1];
     var cRegion = oMatch.arenanet_id.split('-')[0] == "1" ? "NA" : "EU";
+    var cDebugInfo = (m_bDebug ? cMatchId : "");
 
     var aSearchQuery = new Array();
     aSearchQuery.push("T" + cTier);
@@ -225,7 +227,7 @@ function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
     aSearchQuery.push(moment(oMatch.start).format('YYYY.MM.DD'));
     aSearchQuery.push(moment(oMatch.end).format('YYYY.MM.DD'));
 
-    $(cContainerId).append('<div id="' + cMatchId + '" class="list-group-item"><div class="row"><div class="col-md-1"><div class="matchlist-eyecatcher"><span class="matchlist-region">' + cRegion + '</span><span class="matchlist-tier">Tier ' + cTier + '</span></div></div><div class="col-md-10"><a class="match-container" data-match-id="' + oMatch.id + '"></a></div><div class="col-md-1"><a class="get-shortlink btn btn-default btn-xs pull-right" data-toggle="modal" data-target="#modal-shortlink" role="button" data-match-id="' + oMatch.id + '"><i class="glyphicon glyphicon-link"></i> Shortlink</a></div></div></div>');
+    $(cContainerId).append('<div id="' + cMatchId + '" class="list-group-item"><div class="row"><div class="col-md-1"><div class="matchlist-eyecatcher"><span class="matchlist-region">' + cRegion + '</span><span class="matchlist-tier">Tier ' + cTier + '</span></div></div><div class="col-md-10"><a class="match-container" data-match-id="' + oMatch.id + '"></a></div><div class="col-md-1"><a class="get-shortlink btn btn-default btn-xs pull-right" data-toggle="modal" data-target="#modal-shortlink" role="button" data-match-id="' + oMatch.id + '"><i class="glyphicon glyphicon-link"></i> Shortlink</a>' + cDebugInfo + '</div></div></div>');
 
     var cContainer = '<div class="matchlist-worldlist">';
 
