@@ -1,5 +1,6 @@
 var m_oHighchartsKills;
 var m_bDebug = true;
+var m_oDataTableRanking = null;
 
 $(function () {
     new Clipboard('#copy-shortlink');
@@ -19,21 +20,29 @@ $('#headline').click(function () {
     setCurrentMatchlist();
 })
 
+$('#show-world-ranking').click(function () {
+    setWorldRanking();
+})
+
 var ENUM_VIEW = {
     NONE: 0,
     MATCHLIST: 1,
-    MATCH: 2
+    MATCH: 2,
+    WORLD_RANKING: 3
 }
 
 function setView(nView) {
     $('#matchlist').addClass('hidden');
     $('#match').addClass('hidden');
+    $('#world-ranking').addClass('hidden');
     $('#matchlist-search').val('');
 
     if (nView == ENUM_VIEW.MATCH) {
         $('#match').removeClass('hidden');
     } else if (nView == ENUM_VIEW.MATCHLIST) {
         $('#matchlist').removeClass('hidden');
+    } else if (nView == ENUM_VIEW.WORLD_RANKING) {
+        $('#world-ranking').removeClass('hidden');
     }
 }
 
@@ -92,6 +101,55 @@ function setSpecificMatch(cRequestedMatchId) {
             setView(ENUM_VIEW.MATCHLIST);
         }
     })
+}
+
+function setWorldRanking() {
+    setView(ENUM_VIEW.NONE);
+    setLoading(true);
+    $.ajax({
+        url: "inc/world_ranking.php?" + $.now(),
+        dataType: "json",
+        complete: function (oData) {
+            if (m_oDataTableRanking != null) {
+                m_oDataTableRanking.destroy();
+            }
+
+            m_oDataTableRanking = $('#table-world-ranking').DataTable({
+                "order": [
+                    [7, "desc"]
+                ],
+                "paging": false,
+                "info": false,
+                "searching": false
+            });
+
+            for (var nWorldId in oData.responseJSON) {
+                var oWorld = oData.responseJSON[nWorldId];
+
+                for (var nLinking in oWorld.linkings) {
+                    var oLinking = oWorld.linkings[nLinking];
+                    var cPartners = '';
+                    var i = 0;
+                    for (var nPartner in oLinking.partners) {
+                        cPartners += oLinking.partners[nPartner].name;
+                        i++;
+
+                        if (i < oLinking.partners.length) {
+                            cPartners += ', ';
+                        }
+                    }
+                    m_oDataTableRanking.row.add([oWorld.name, cPartners, oLinking.matchcount.toString(), oLinking.kills.toString(), oLinking.deaths.toString(), "", "", getKdr(oLinking.kills, oLinking.deaths)]).draw(false);
+                }
+
+            }
+
+            setView(ENUM_VIEW.WORLD_RANKING);
+            setLoading(false);
+        },
+        error: function (oXhr, cStatus, cError) {
+            $('#message-container').html('<div class="alert alert-danger" role="alert"><b>' + cStatus + '</b><br />' + cError + '</div>');
+        }
+    });
 }
 
 function setAllMatchlist() {
