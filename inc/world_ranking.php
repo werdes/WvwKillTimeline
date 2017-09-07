@@ -18,7 +18,7 @@ if(defined("DB_HOST") && defined("DB_USER") && defined("DB_PASSWORD") && defined
         $oQueryWorldNames = $oConnection->query($cSqlWorldNames);
         $aWorldNames = array();
         while($oItem = $oQueryWorldNames->fetch_object()) {
-            $aWorldNames[$oItem->id] = $oItem->name;
+            $aWorldNames[$oItem->id] = $oItem;
         }
         
         $aWorlds = array();
@@ -33,7 +33,7 @@ if(defined("DB_HOST") && defined("DB_USER") && defined("DB_PASSWORD") && defined
             if(!array_key_exists($nHostWorldId, $aWorlds)) {
                 $oWorld = new world();
                 $oWorld->id = $nHostWorldId;
-                $oWorld->name = $aWorldNames[$oWorld->id];
+                $oWorld->name = $aWorldNames[$oWorld->id]->name;
                 $oWorld->linkings = array();
                 $aWorlds[$oWorld->id] = $oWorld;
             }
@@ -44,7 +44,7 @@ if(defined("DB_HOST") && defined("DB_USER") && defined("DB_PASSWORD") && defined
             for($i = 1; $i < count($aWorldIDs); $i++) {
                 $oLinkingPartner = new link_partner();
                 $oLinkingPartner->id = $aWorldIDs[$i];
-                $oLinkingPartner->name = $aWorldNames[$oLinkingPartner->id];
+                $oLinkingPartner->name = $aWorldNames[$oLinkingPartner->id]->name;
                 array_push($oLinking->partners, $oLinkingPartner);
             }
             
