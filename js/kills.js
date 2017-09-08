@@ -1,5 +1,5 @@
 var m_oHighchartsKills;
-var m_bDebug = true;
+var m_bDebug = false;
 var m_oDataTableRanking = null;
 
 $(function () {
@@ -37,7 +37,16 @@ function setView(nView) {
     $('#world-ranking').addClass('hidden');
     $('#matchlist-search').val('');
 
-    if (nView == ENUM_VIEW.MATCH) {
+    if (nView == ENUM_VIEW.NONE) {
+        $("body").children(".fixedHeader").each(function () {
+            $(this).remove();
+        });
+        if (m_oDataTableRanking != null) {
+            m_oDataTableRanking.clear();
+            m_oDataTableRanking.destroy();
+            m_oDataTableRanking = null;
+        }
+    } else if (nView == ENUM_VIEW.MATCH) {
         $('#match').removeClass('hidden');
     } else if (nView == ENUM_VIEW.MATCHLIST) {
         $('#matchlist').removeClass('hidden');
@@ -110,17 +119,13 @@ function setWorldRanking() {
         url: "inc/world_ranking.php?" + $.now(),
         dataType: "json",
         complete: function (oData) {
-            if (m_oDataTableRanking != null) {
-                m_oDataTableRanking.destroy();
-            }
-
             m_oDataTableRanking = $('#table-world-ranking').DataTable({
                 "order": [
                     [7, "desc"]
                 ],
                 "paging": false,
                 "info": false,
-                "searching": false
+                "searching": true
             });
 
             for (var nWorldId in oData.responseJSON) {
@@ -138,13 +143,19 @@ function setWorldRanking() {
                             cPartners += ', ';
                         }
                     }
-                    m_oDataTableRanking.row.add([oWorld.name, cPartners, oLinking.matchcount.toString(), oLinking.kills.toString(), oLinking.deaths.toString(), "", "", getKdr(oLinking.kills, oLinking.deaths)]).draw(false);
+
+                    var cLeadingWorldName = '<i class="famfamfam-flag-' + getFlagShort(oWorld.arenanet_id) + '"></i> ' + oWorld.name;
+
+                    m_oDataTableRanking.row.add([cLeadingWorldName, cPartners, oLinking.matchcount.toString(), oLinking.kills.toThousandSeparator(), oLinking.deaths.toThousandSeparator(), (oLinking.kills / oLinking.matchcount).toFixed(2).toString(), (oLinking.deaths / oLinking.matchcount).toFixed(2).toString(), getKdr(oLinking.kills, oLinking.deaths)]).draw(false);
                 }
 
             }
 
             setView(ENUM_VIEW.WORLD_RANKING);
             setLoading(false);
+            new $.fn.dataTable.FixedHeader(m_oDataTableRanking, {
+
+            });
         },
         error: function (oXhr, cStatus, cError) {
             $('#message-container').html('<div class="alert alert-danger" role="alert"><b>' + cStatus + '</b><br />' + cError + '</div>');
@@ -888,3 +899,7 @@ String.prototype.toProperCase = function () {
         return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
     });
 };
+
+Number.prototype.toThousandSeparator = function () {
+    return this.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}

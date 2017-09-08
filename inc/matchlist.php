@@ -6,8 +6,21 @@ require_once("config.inc.php");
 require_once("../class/matchlist_entry.class.php");
 
 
-if(defined("DB_HOST") && defined("DB_USER") && defined("DB_PASSWORD") && defined("DB_NAME")) {
-    if(isset($_GET["current"]) || isset($_GET["all"])) {
+define("CACHE_DIR", "../cache/");
+define("CACHE_DURATION", 60);
+require_once("../inc/cache.inc.php");
+
+
+
+if(isset($_GET["current"]) || isset($_GET["all"])) {
+    
+    if(isset($_GET["all"])) {
+        if(cache_exist("matchlist_all")) {
+            exit(json_encode(cache_get("matchlist_all")));
+        }
+    }
+    
+    if(defined("DB_HOST") && defined("DB_USER") && defined("DB_PASSWORD") && defined("DB_NAME")) {
         $oConnection = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
         
         if(!$oConnection->connect_errno) {
@@ -59,6 +72,10 @@ if(defined("DB_HOST") && defined("DB_USER") && defined("DB_PASSWORD") && defined
                 }
                 
                 echo json_encode($aAusgabe);
+                
+                if(isset($_GET["all"])) {
+                    cache_set("matchlist_all", $aAusgabe);
+                }
             }
             else {
                 echo mysqli_error($oConnection);
