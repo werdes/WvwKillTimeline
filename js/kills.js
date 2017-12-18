@@ -105,7 +105,7 @@ function resolveSlug(cSlug, callback) {
             }
         },
         error: function (oXhr, cStatus, cError) {
-            $('#message-container').html('<div class="alert alert-danger" role="alert"><b>' + cStatus + '</b><br />' + cError + '</div>');
+            setMessage('<b>' + cStatus + '</b><br />' + cError, 'danger');
             setView(ENUM_VIEW.MATCHLIST);
         }
     })
@@ -129,7 +129,7 @@ function setSpecificMatch(cRequestedMatchId) {
             }
         },
         error: function (oXhr, cStatus, cError) {
-            $('#message-container').html('<div class="alert alert-danger" role="alert"><b>' + cStatus + '</b><br />' + cError + '</div>');
+            setMessage('<b>' + cStatus + '</b><br />' + cError, 'danger');
             setView(ENUM_VIEW.MATCHLIST);
         }
     })
@@ -184,7 +184,7 @@ function setWorldRanking() {
             });
         },
         error: function (oXhr, cStatus, cError) {
-            $('#message-container').html('<div class="alert alert-danger" role="alert"><b>' + cStatus + '</b><br />' + cError + '</div>');
+            setMessage('<b>' + cStatus + '</b><br />' + cError, 'danger');
         }
     });
 }
@@ -227,7 +227,7 @@ function setAllMatchlist(nStep) {
 
         },
         error: function (oXhr, cStatus, cError) {
-            $('#message-container').html('<div class="alert alert-danger" role="alert"><b>' + cStatus + '</b><br />' + cError + '</div>');
+            setMessage('<b>' + cStatus + '</b><br />' + cError, 'danger');
         }
     });
 
@@ -271,7 +271,7 @@ function setCurrentMatchlistMainMenu() {
             });
         },
         error: function (oXhr, cStatus, cError) {
-            $('#message-container').html('<div class="alert alert-danger" role="alert"><b>' + cStatus + '</b><br />' + cError + '</div>');
+            setMessage('<b>' + cStatus + '</b><br />' + cError, 'danger');
         }
     });
 }
@@ -302,7 +302,7 @@ function setCurrentMatchlist() {
             setView(ENUM_VIEW.MATCHLIST);
         },
         error: function (oXhr, cStatus, cError) {
-            $('#message-container').html('<div class="alert alert-danger" role="alert"><b>' + cStatus + '</b><br />' + cError + '</div>');
+            setMessage('<b>' + cStatus + '</b><br />' + cError, 'danger');
         }
     });
 }
@@ -446,6 +446,10 @@ function setMatch(cMatchId, oMatchlistMatch) {
             $('#reload-chart').attr('data-match-id', cMatchId);
             $('#reload-chart').data('match', oMatchlistMatch);
 
+            if (oMatch.flattened) {
+                setMessage("Due to issues with the <strong>Guild Wars 2-API</strong> the data of this match has been flattened to be more precise.<br />Please note, that this has altered the timeline of when kills occured. The kill and death counts are correct. I know it's not pretty, but that's as much as i can do 🔥.", "warning");
+            }
+
             m_oHighchartsKills.redraw();
             setLoading(false);
 
@@ -453,9 +457,17 @@ function setMatch(cMatchId, oMatchlistMatch) {
 
         },
         error: function (oXhr, cStatus, cError) {
-            $('#message-container').html('<div class="alert alert-danger" role="alert"><b>' + cStatus + '</b><br />' + cError + '</div>');
+            setMessage('<b>' + cStatus + '</b><br />' + cError, 'danger');
         }
     })
+}
+
+function setMessage(cMessage, cType) {
+    $('#message-container').append('<div class="alert alert-' + cType + ' alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' + cMessage + '</div>');
+}
+
+function clearMessages() {
+    $('#message-container').html('');
 }
 
 $('#reload-chart').click(function () {
@@ -476,9 +488,18 @@ function setSeries(oSeries, aWorlds, aMaps, i, cDeathsKills) {
         step: 'center',
         color: getMapChartColor(oSeries.color, oSeries.map_id, bDeaths)
     });
+
     for (var cSeriesItemKey in oSeries.series_items) {
         var oSeriesItem = oSeries.series_items[cSeriesItemKey];
         var nValue = bDeaths ? (parseInt(oSeriesItem.deaths) * -1) : (parseInt(oSeriesItem.kills));
+
+        var oMarker = null;
+
+        if (oSeriesItem.flattened && i == 0) {
+            oMarker = {
+                symbol: 'url(img/warning_marker.png)'
+            }
+        }
         m_oHighchartsKills.series[i].addPoint({
             x: Date.parse(oSeriesItem.timeslot_start),
             y: nValue,
@@ -486,7 +507,10 @@ function setSeries(oSeries, aWorlds, aMaps, i, cDeathsKills) {
             world: oSeries.world_id,
             map: oSeries.map_id,
             kills: parseInt(oSeriesItem.kills),
-            deaths: parseInt(oSeriesItem.deaths)
+            deaths: parseInt(oSeriesItem.deaths),
+            flattened: oSeriesItem.flattened,
+            seriesindex: i,
+            marker: oMarker
         }, false);
 
     };
@@ -636,6 +660,8 @@ function setLoading(bVisible) {
     $('#loading-container').removeClass('hidden');
     if (!bVisible)
         $('#loading-container').addClass('hidden');
+    else
+        clearMessages();
 }
 
 function getChartOptions() {
@@ -703,7 +729,11 @@ function getChartOptions() {
         ],
         plotOptions: {
             area: {
-                stacking: 'normal'
+                stacking: 'normal',
+                marker: {
+                    // width: 10,
+                    // height: 10
+                }
             }
         },
         series: []
@@ -805,7 +835,9 @@ Highcharts.Point.prototype.tooltipFormatter = function (bUseHeader) {
     $(cSelectorDeaths).css("width", aWidths[1] + "%");
     setWorldKdr(oPoint.world, oPoint.kills, oPoint.deaths);
 
-    return (!bUseHeader ? ('<b>x = ' + (oPoint.name || oPoint.x) + ',</b> ') : '');
+    var cFlatteningNote = oPoint.flattened && oPoint.seriesindex == 0 ? '<br />! This value has been altered by the error correction mechanism !' : '';
+
+    return cFlatteningNote; //(bUseHeader ? "b" : "a"); //('<b>x = ' + (oPoint.name || oPoint.x) + ',</b> ') : 'a');
     /*['<span style="color:' + oSeries.color + '">', oSeries.name, '</span>: ',
         (!bUseHeader ? ('<b>x = ' + (oPoint.name || oPoint.x) + ',</b> ') : ''),
         '<b>', (!bUseHeader ? 'y = ' : ''), Highcharts.numberFormat(Math.abs(oPoint.y), 0), '</b><br />'

@@ -257,6 +257,12 @@ input.clipboard {
   display: none;
 }
 
+div#message-container {
+  padding-left: 0px;
+  padding-right: 0px;
+  width: auto;
+}
+
 .spinner {
   width: 40px;
   height: 40px;
