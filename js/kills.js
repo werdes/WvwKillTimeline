@@ -5,15 +5,20 @@ var m_oDataTableRanking = null;
 $(function () {
     new Clipboard('#copy-shortlink');
     setCurrentMatchlistMainMenu();
-    if (getParameterByName('match')) {
-        setSpecificMatch(getParameterByName('match'));
+    if (checkParameter('match')) {
+        resolveSlug(getParameterByName('match'), function (oSlug) {
+            setSpecificMatch(oSlug.match_id);
+        });
+    } else if (checkParameter('ranking')) {
+        setWorldRanking();
     } else {
         setCurrentMatchlist();
     }
+
 });
 
 $('#show-all-matches').click(function () {
-    setAllMatchlist();
+    setAllMatchlist(0);
 });
 
 $('#headline').click(function () {
@@ -46,7 +51,8 @@ function setView(nView) {
             m_oDataTableRanking.destroy();
             m_oDataTableRanking = null;
         }
-    } else if (nView == ENUM_VIEW.MATCH) {
+    } else
+    if (nView == ENUM_VIEW.MATCH) {
         $('#match').removeClass('hidden');
     } else if (nView == ENUM_VIEW.MATCHLIST) {
         $('#matchlist').removeClass('hidden');
@@ -88,6 +94,23 @@ function getWorlds(oMatch) {
     return aWorlds;
 }
 
+function resolveSlug(cSlug, callback) {
+    $.ajax({
+        url: "inc/slug.php?slug=" + cSlug + "&" + $.now(),
+        caching: false,
+        dataType: "json",
+        complete: function (oData) {
+            if (oData != null && oData.responseJSON != null) {
+                callback(oData.responseJSON);
+            }
+        },
+        error: function (oXhr, cStatus, cError) {
+            $('#message-container').html('<div class="alert alert-danger" role="alert"><b>' + cStatus + '</b><br />' + cError + '</div>');
+            setView(ENUM_VIEW.MATCHLIST);
+        }
+    })
+}
+
 function setSpecificMatch(cRequestedMatchId) {
     setLoading(true);
     setView(ENUM_VIEW.NONE);
@@ -121,7 +144,7 @@ function setWorldRanking() {
         complete: function (oData) {
             m_oDataTableRanking = $('#table-world-ranking').DataTable({
                 "order": [
-                    [7, "desc"]
+                    [6, "desc"]
                 ],
                 "paging": false,
                 "info": false,
@@ -136,6 +159,9 @@ function setWorldRanking() {
                     var cPartners = '';
                     var i = 0;
                     for (var nPartner in oLinking.partners) {
+                        if (i == 0) {
+                            cPartners += ', ';
+                        }
                         cPartners += oLinking.partners[nPartner].name;
                         i++;
 
@@ -144,9 +170,9 @@ function setWorldRanking() {
                         }
                     }
 
-                    var cLeadingWorldName = '<i class="famfamfam-flag-' + getFlagShort(oWorld.arenanet_id) + '"></i> ' + oWorld.name;
+                    var cLeadingWorldName = '<i class="famfamfam-flag-' + getFlagShort(oWorld.arenanet_id) + '"></i> <b>' + oWorld.name + '</b>';
 
-                    m_oDataTableRanking.row.add([cLeadingWorldName, cPartners, oLinking.matchcount.toString(), oLinking.kills.toThousandSeparator(), oLinking.deaths.toThousandSeparator(), (oLinking.kills / oLinking.matchcount).toFixed(2).toString(), (oLinking.deaths / oLinking.matchcount).toFixed(2).toString(), getKdr(oLinking.kills, oLinking.deaths)]).draw(false);
+                    m_oDataTableRanking.row.add([cLeadingWorldName + cPartners, oLinking.matchcount.toString(), oLinking.kills.toThousandSeparator(), oLinking.deaths.toThousandSeparator(), (oLinking.kills / oLinking.matchcount).toFixed(2).toString(), (oLinking.deaths / oLinking.matchcount).toFixed(2).toString(), getKdr(oLinking.kills, oLinking.deaths)]).draw(false);
                 }
 
             }
@@ -163,7 +189,7 @@ function setWorldRanking() {
     });
 }
 
-function setAllMatchlist() {
+function setAllMatchlist(nStep) {
     var cContainerId = '#matchlist-container';
 
     setLoading(true);
@@ -172,7 +198,7 @@ function setAllMatchlist() {
     setView(ENUM_VIEW.NONE);
 
     $.ajax({
-        url: "inc/matchlist.php?all&" + $.now(),
+        url: "inc/matchlist.php?all&step=" + nStep + "&" + $.now(),
         dataType: "json",
         complete: function (oData) {
 
@@ -243,7 +269,6 @@ function setCurrentMatchlistMainMenu() {
                 var oMatch = $(this).data('match');
                 setMatch(cMatchId, oMatch);
             });
-
         },
         error: function (oXhr, cStatus, cError) {
             $('#message-container').html('<div class="alert alert-danger" role="alert"><b>' + cStatus + '</b><br />' + cError + '</div>');
@@ -296,7 +321,7 @@ function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
     aSearchQuery.push(moment(oMatch.start).format('YYYY.MM.DD'));
     aSearchQuery.push(moment(oMatch.end).format('YYYY.MM.DD'));
 
-    $(cContainerId).append('<div id="' + cMatchId + '" class="list-group-item"><div class="row"><div class="col-md-1"><div class="matchlist-eyecatcher"><span class="matchlist-region">' + cRegion + '</span><span class="matchlist-tier">Tier ' + cTier + '</span></div></div><div class="col-md-10"><a class="match-container" data-match-id="' + oMatch.id + '"></a></div><div class="col-md-1"><a class="get-shortlink btn btn-default btn-xs pull-right" data-toggle="modal" data-target="#modal-shortlink" role="button" data-match-id="' + oMatch.id + '"><i class="glyphicon glyphicon-link"></i> Shortlink</a>' + cDebugInfo + '</div></div></div>');
+    $(cContainerId).append('<div id="' + cMatchId + '" class="list-group-item"><div class="row"><div class="col-md-1"><div class="matchlist-eyecatcher"><span class="matchlist-region">' + cRegion + '</span><span class="matchlist-tier">Tier ' + cTier + '</span></div></div><div class="col-md-10"><a class="match-container" data-match-id="' + oMatch.id + '"></a></div><div class="col-md-1"><a class="get-shortlink btn btn-default btn-xs pull-right" data-toggle="modal" data-target="#modal-shortlink" role="button" data-match-slug="' + getLongestInArray(oMatch.slugs) + '"><i class="glyphicon glyphicon-link"></i> Shortlink</a>' + cDebugInfo + '</div></div></div>');
 
     var cContainer = '<div class="matchlist-worldlist">';
 
@@ -330,8 +355,8 @@ function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
 
 $('#modal-shortlink').on('shown.bs.modal', function (event) {
     var oSender = $(event.relatedTarget);
-    var cMatchId = oSender.attr('data-match-id');
-    var cShortlink = window.location.href.replace("#", "").split('?')[0] + "?match=" + cMatchId;
+    var cMatchSlug = oSender.attr('data-match-slug');
+    var cShortlink = window.location.href.replace("#", "").split('?')[0] + "?match=" + cMatchSlug;
 
     $('#shortlink-textbox').val(cShortlink);
     $('#shortlink-textbox').select();
@@ -357,7 +382,12 @@ function setMatch(cMatchId, oMatchlistMatch) {
             var nKillsMax = 0;
             var nDeathsMin = 0;
 
-            $('div#match > a.get-shortlink').attr('data-match-id', oMatchlistMatch.id);
+            var cTier = oMatchlistMatch.arenanet_id.split('-')[1];
+            var cRegion = oMatchlistMatch.arenanet_id.split('-')[0] == "1" ? "NA" : "EU";
+
+            $('div#match > a.get-shortlink').attr('data-match-slug', getLongestInArray(oMatchlistMatch.slugs));
+
+            $('#match-title').html(moment(oMatch.match_start).format("YYYY.MM.DD") + " - " + moment(oMatch.match_end).format("YYYY.MM.DD") + " <small>" + cRegion + " Tier " + cTier + "</small>");
 
             m_oHighchartsKills.setTitle({
                 text: aWorlds['green'] + " / " + aWorlds['blue'] + " / " + aWorlds['red']
@@ -843,6 +873,13 @@ function getParameterByName(name) {
     return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
 }
 
+function checkParameter(name) {
+    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+    var regex = new RegExp("[\\?&]" + name + "([^&#]*)"),
+        results = regex.exec(location.search);
+    return results !== null;
+}
+
 function setWorldKdr(nWorld, nKills, nDeaths) {
     var cSelectorWorld = '.world-kd.' + nWorld;
 
@@ -893,6 +930,12 @@ $('#matchlist-search').keyup(function (e) {
         $('#matchlist-container > div').removeClass('hidden');
     }
 });
+
+function getLongestInArray(aArray) {
+    return aArray.sort(function (a, b) {
+        return b.length - a.length;
+    })[0];
+}
 
 String.prototype.toProperCase = function () {
     return this.replace(/\w\S*/g, function (txt) {
