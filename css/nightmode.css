@@ -1,0 +1,62 @@
+body {
+    filter: invert(100%) hue-rotate(180deg) !important;
+    text-shadow: 0 0 0 !important;
+    background: #0d0d0d !important
+}
+
+:not(object):not(body)>embed,
+[style*="background:url"]:empty,
+[style*="background-image:url"]:empty,
+[style*="background: url"]:empty,
+[style*="background-image: url"]:empty,
+iframe,
+img,
+object,
+svg image,
+video,
+i,
+svg,
+span.nightmode-switch,
+.no-nightmode {
+    filter: invert(100%) hue-rotate(180deg) !important;
+    text-shadow: none !important;
+}
+
+.no-nightmode :not(object):not(body)>embed,
+.no-nightmode [style*="background:url"]:empty,
+.no-nightmode [style*="background-image:url"]:empty,
+.no-nightmode [style*="background: url"]:empty,
+.no-nightmode [style*="background-image: url"]:empty,
+.no-nightmode iframe,
+.no-nightmode img,
+.no-nightmode object,
+.no-nightmode svg image,
+.no-nightmode video,
+.no-nightmode i {
+    filter: none !important;
+}
+
+a.btn.no-nightmode {
+    color: black;
+}
+
+span.label {
+    color: black !important;
+    background-color: white;
+}
+
+span.label.label-danger {
+    outline: 1px #d9534f solid;
+}
+
+span.label.label-success {
+    outline: 1px #5cb85c solid;
+}
+
+span.nightmode-switch {
+    background-position: 24px 0px;
+}
+
+div.modal-backdrop {
+    background-color: #ddd !important;
+}

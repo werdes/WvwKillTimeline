@@ -1,33 +1,33 @@
 var m_oHighchartsKills;
 var m_bDebug = false;
 var m_oDataTableRanking = null;
+var m_bFlattening = true;
 
 $(function () {
+    checkNightmode();
     new Clipboard('#copy-shortlink');
     setCurrentMatchlistMainMenu();
-    if (checkParameter('match')) {
-        resolveSlug(getParameterByName('match'), function (oSlug) {
-            setSpecificMatch(oSlug.match_id);
+
+    var oApp = $.sammy(function () {
+        this.get('#/matches/current/', function (context) {
+            setCurrentMatchlist();
         });
-    } else if (checkParameter('ranking')) {
-        setWorldRanking();
-    } else {
-        setCurrentMatchlist();
-    }
+        this.get('#/matches/all/', function (context) {
+            setAllMatchlist(0);
+        });
+        this.get('#/worldranking/', function (context) {
+            setWorldRanking();
+        });
+        this.get('#/matches/:slug/', function (context) {
+            var cSlug = this.params['slug'];
+            resolveSlug(cSlug, function (oSlug) {
+                setSpecificMatch(oSlug.match_id);
+            });
+        })
+    });
 
+    oApp.run('#/matches/current/');
 });
-
-$('#show-all-matches').click(function () {
-    setAllMatchlist(0);
-});
-
-$('#headline').click(function () {
-    setCurrentMatchlist();
-})
-
-$('#show-world-ranking').click(function () {
-    setWorldRanking();
-})
 
 var ENUM_VIEW = {
     NONE: 0,
@@ -35,6 +35,40 @@ var ENUM_VIEW = {
     MATCH: 2,
     WORLD_RANKING: 3
 }
+
+$('.nightmode-switch').click(function () {
+    toggleNightmode();
+});
+
+function checkNightmode() {
+    var cNightModeCookie = $.cookie('nightmode');
+    if (cNightModeCookie == undefined || cNightModeCookie == null) {
+        $.cookie('nightmode', 'false', {
+            expires: 365
+        });
+        cNightModeCookie = $.cookie('nightmode');;
+    }
+    if (cNightModeCookie == 'false') {
+        $('head link[rel="stylesheet"][href="css/nightmode.min.css"]').remove();
+    } else {
+        $('head').append('<link rel="stylesheet" type="text/css" href="css/nightmode.min.css">');
+    }
+}
+
+function toggleNightmode() {
+    var cNightModeCookie = $.cookie('nightmode');
+    if (cNightModeCookie == 'false') {
+        $.cookie('nightmode', 'true', {
+            expires: 365
+        });
+    } else {
+        $.cookie('nightmode', 'false', {
+            expires: 365
+        });
+    }
+
+    checkNightmode();
+};
 
 function setView(nView) {
     $('#matchlist').addClass('hidden');
@@ -116,7 +150,7 @@ function setSpecificMatch(cRequestedMatchId) {
     setView(ENUM_VIEW.NONE);
 
     $.ajax({
-        url: "inc/matchlist.php?all&" + $.now(),
+        url: "inc/matchlist.php?single&match_id=" + cRequestedMatchId + "&" + $.now(),
         caching: false,
         dataType: "json",
         complete: function (oData) {
@@ -215,13 +249,6 @@ function setAllMatchlist(nStep) {
                 }
                 setMatchlistMatchContainer(cContainerId, cMatchId, oMatch);
             };
-
-            $('div#matchlist-container div.list-group-item a.match-container').click(function () {
-                var cMatchId = $(this).attr('data-match-id');
-                var oMatch = $(this).data('match');
-                setMatch(cMatchId, oMatch);
-            });
-
             setLoading(false);
             setView(ENUM_VIEW.MATCHLIST);
 
@@ -244,9 +271,11 @@ function setCurrentMatchlistMainMenu() {
                 var oMatch = oData.responseJSON[cMatchId];
                 var cTier = oMatch.arenanet_id.split('-')[1];
                 var cRegion = oMatch.arenanet_id.split('-')[0] == "1" ? "NA" : "EU";
+                var cUrl = '#/matches/' + getLongestInArray(oMatch.slugs) + "/";
+
 
                 $(cMenuContainerId).append('<li data-match-id="' + oMatch.id + '" id="menu-' + cMatchId + '"></li>');
-                var cMenuContainer = '<a href="javascript:void(0);"><b>' + cRegion + "</b>/<b>T" + cTier + "</b> ";
+                var cMenuContainer = '<a href="' + cUrl + '"><b>' + cRegion + "</b>/<b>T" + cTier + "</b> ";
                 var i = 0;
                 for (var cWorldId in oMatch.worlds) {
                     var oWorld = oMatch.worlds[cWorldId];
@@ -260,15 +289,11 @@ function setCurrentMatchlistMainMenu() {
                 }
                 cMenuContainer += '</a>';
                 $('#menu-' + cMatchId).append(cMenuContainer);
-                $('#menu-' + cMatchId).data('match', oMatch);
+
+                $('#menu-' + cMatchId).click(function () {
+                    $('#current-matches-dropdown').dropdown('toggle');
+                });
             };
-
-
-            $('ul#menu-current-matchups li').click(function () {
-                var cMatchId = $(this).attr('data-match-id');
-                var oMatch = $(this).data('match');
-                setMatch(cMatchId, oMatch);
-            });
         },
         error: function (oXhr, cStatus, cError) {
             setMessage('<b>' + cStatus + '</b><br />' + cError, 'danger');
@@ -292,12 +317,6 @@ function setCurrentMatchlist() {
                 setMatchlistMatchContainer(cContainerId, cMatchId, oData.responseJSON[cMatchId]);
             };
 
-            $('div#matchlist-container div.list-group-item a.match-container').click(function () {
-                var cMatchId = $(this).attr('data-match-id');
-                var oMatch = $(this).data('match');
-                setMatch(cMatchId, oMatch);
-            });
-
             setLoading(false);
             setView(ENUM_VIEW.MATCHLIST);
         },
@@ -320,6 +339,9 @@ function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
     aSearchQuery.push(oMatch.end);
     aSearchQuery.push(moment(oMatch.start).format('YYYY.MM.DD'));
     aSearchQuery.push(moment(oMatch.end).format('YYYY.MM.DD'));
+
+    var cUrl = '#/matches/' + getLongestInArray(oMatch.slugs) + "/";
+    console.log(cUrl);
 
     $(cContainerId).append('<div id="' + cMatchId + '" class="list-group-item"><div class="row"><div class="col-md-1"><div class="matchlist-eyecatcher"><span class="matchlist-region">' + cRegion + '</span><span class="matchlist-tier">Tier ' + cTier + '</span></div></div><div class="col-md-10"><a class="match-container" data-match-id="' + oMatch.id + '"></a></div><div class="col-md-1"><a class="get-shortlink btn btn-default btn-xs pull-right" data-toggle="modal" data-target="#modal-shortlink" role="button" data-match-slug="' + getLongestInArray(oMatch.slugs) + '"><i class="glyphicon glyphicon-link"></i> Shortlink</a>' + cDebugInfo + '</div></div></div>');
 
@@ -349,14 +371,18 @@ function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
     }
     cContainer += "</a></div>";
     $("#" + cMatchId + ' a.match-container').append(cContainer);
-    $('#' + cMatchId + ' a.match-container').data('match', oMatch);
+
     $('#' + cMatchId).attr('data-search-query', aSearchQuery.join('#'));
+
+    $('#' + cMatchId + " a.match-container").click(function () {
+        window.location = cUrl;
+    });
 }
 
 $('#modal-shortlink').on('shown.bs.modal', function (event) {
     var oSender = $(event.relatedTarget);
     var cMatchSlug = oSender.attr('data-match-slug');
-    var cShortlink = window.location.href.replace("#", "").split('?')[0] + "?match=" + cMatchSlug;
+    var cShortlink = window.location.href; //.split('#')[0] + "#/matches/" + cMatchSlug + "/";
 
     $('#shortlink-textbox').val(cShortlink);
     $('#shortlink-textbox').select();
@@ -370,9 +396,12 @@ function setMatch(cMatchId, oMatchlistMatch) {
     resetChart();
 
     m_oHighchartsKills = new Highcharts.stockChart(getChartOptions());
+    $('#disable-flattening').removeClass('hidden');
+    $('#enable-flattening').removeClass('hidden');
+
 
     $.ajax({
-        url: "inc/match.php?match_id=" + cMatchId + "&" + $.now(),
+        url: "inc/match.php?match_id=" + cMatchId + "&flattening=" + m_bFlattening + "&" + $.now(),
         dataType: "json",
         complete: function (oData) {
             var oMatch = oData.responseJSON;
@@ -384,14 +413,20 @@ function setMatch(cMatchId, oMatchlistMatch) {
 
             var cTier = oMatchlistMatch.arenanet_id.split('-')[1];
             var cRegion = oMatchlistMatch.arenanet_id.split('-')[0] == "1" ? "NA" : "EU";
+            var cLongestSlug = getLongestInArray(oMatchlistMatch.slugs);
 
-            $('div#match > a.get-shortlink').attr('data-match-slug', getLongestInArray(oMatchlistMatch.slugs));
+            $('div#match > a.get-shortlink').attr('data-match-slug', cLongestSlug);
 
             $('#match-title').html(moment(oMatch.match_start).format("YYYY.MM.DD") + " - " + moment(oMatch.match_end).format("YYYY.MM.DD") + " <small>" + cRegion + " Tier " + cTier + "</small>");
 
             m_oHighchartsKills.setTitle({
                 text: aWorlds['green'] + " / " + aWorlds['blue'] + " / " + aWorlds['red']
             });
+            if (!oMatch.flattened) {
+                $('#disable-flattening').addClass('hidden');
+            } else {
+                $('#enable-flattening').addClass('hidden');
+            }
 
             var nSeriesItemIndex = 0;
             var oFirstSeries = oMatch.series[Object.keys(oMatch.series)[0]];
@@ -444,10 +479,11 @@ function setMatch(cMatchId, oMatchlistMatch) {
             setMatchStatistics(oMatch, oMatchlistMatch);
 
             $('#reload-chart').attr('data-match-id', cMatchId);
-            $('#reload-chart').data('match', oMatchlistMatch);
+            $('#disable-flattening').attr('data-match-id', cMatchId);
+            $('#enable-flattening').attr('data-match-id', cMatchId);
 
             if (oMatch.flattened) {
-                setMessage("Due to issues with the <strong>Guild Wars 2-API</strong> the data of this match has been flattened to be more precise.<br />Please note, that this has altered the timeline of when kills occured. The kill and death counts are correct. I know it's not pretty, but that's as much as i can do 🔥.", "warning");
+                setMessage("Due to issues with the <strong>Guild Wars 2 API</strong> the data of this match has been flattened to be more precise.<br />Please note, that this has altered the timeline of when kills occured. The kill and death counts are correct. I know it's not pretty, but that's as much as i can do 🔥.", "warning");
             }
 
             m_oHighchartsKills.redraw();
@@ -471,12 +507,24 @@ function clearMessages() {
 }
 
 $('#reload-chart').click(function () {
-
-    var oMatch = $(this).data('match');
     var cMatchId = $(this).attr('data-match-id');
 
-    setMatch(cMatchId, oMatch);
+    // setMatch(cMatchId, oMatch);
 
+    setSpecificMatch(cMatchId);
+
+});
+
+$('#disable-flattening').click(function () {
+    m_bFlattening = false;
+    var cMatchId = $(this).attr('data-match-id');
+    setSpecificMatch(cMatchId);
+});
+
+$('#enable-flattening').click(function () {
+    m_bFlattening = true;
+    var cMatchId = $(this).attr('data-match-id');
+    setSpecificMatch(cMatchId);
 });
 
 function setSeries(oSeries, aWorlds, aMaps, i, cDeathsKills) {
@@ -573,7 +621,7 @@ function setMatchStatistics(oMatch, oMatchlistMatch) {
 
             cContainerContent += '<div class="row kd" data-kills="' + oMap.kills + '" data-deaths="' + oMap.deaths + '" data-world="' + oWorld.world_id + '" data-map-id="' + cMapId + '" data-color="' + aWorldColors[oMap.map_id] + '" data-world-name="' + oWorld.world_name + '" data-map-name="' + cMapName + '">';
 
-            cContainerContent += '<div class="col-md-2" style="color: ' + aWorldColors[oMap.map_id] + '">' + cMapName + '</div><div class="col-md-7"><div class="progress"><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' kills" title="kills" role="progressbar" style="width: ' + aWidths[0] + '%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, false) + ';"  >' + oMap.kills + '</div><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' deaths" style="width: ' + aWidths[1] + '%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, true) + ';" title="deaths">' + oMap.deaths + '</div></div></div><div class="col-md-3 ' + cMapId + ' ' + oWorld.world_id + ' kdr">&empty;' + cKDR + '</div>';
+            cContainerContent += '<div class="col-md-2" style="color: ' + aWorldColors[oMap.map_id] + '">' + cMapName + '</div><div class="col-md-7"><div class="progress"><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' kills no-nightmode" title="kills" role="progressbar" style="width: ' + aWidths[0] + '%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, false) + ';"  >' + oMap.kills + '</div><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' deaths no-nightmode" style="width: ' + aWidths[1] + '%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, true) + ';" title="deaths">' + oMap.deaths + '</div></div></div><div class="col-md-3 ' + cMapId + ' ' + oWorld.world_id + ' kdr">&empty;' + cKDR + '</div>';
 
             cContainerContent += '</div>';
         }

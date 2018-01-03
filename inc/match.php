@@ -1,6 +1,6 @@
 <?php
-// error_reporting(0);
-error_reporting(E_ALL);
+error_reporting(0);
+// error_reporting(E_ALL);
 // header('Content-Type: application/json');
 require_once("config.inc.php");
 require_once("../class/series.class.php");
@@ -8,8 +8,10 @@ require_once("../class/series_item.class.php");
 require_once("../class/match.class.php");
 
 define("THRESHOLD_FLATTENING", 25);
-define("THRESHOLD_VICTIM", 0.2);
+define("THRESHOLD_VICTIM", 0.25);
 define("THRESHOLD_BACKTRACKING_COUNT", 4);
+
+$bFlatten = isset($_GET["flattening"]) && !empty($_GET["flattening"]) && $_GET["flattening"] == "true";
 
 
 if (defined("DB_HOST") && defined("DB_USER") && defined("DB_PASSWORD") && defined("DB_NAME")) {
@@ -93,81 +95,98 @@ if (defined("DB_HOST") && defined("DB_USER") && defined("DB_PASSWORD") && define
             $nMicrotimeAfterLoop = microtime(true);
 
             //Flattening spikes
-
-            foreach ($oMatch->series as $oSeries) {
-                for ($i = 0; $i < count($oSeries->series_items); $i++) {
-                    $oSeriesItem = $oSeries->series_items[$i];
-                    if ($oSeriesItem->kills > THRESHOLD_FLATTENING || $oSeriesItem->deaths > THRESHOLD_FLATTENING) {
+            if (FLATTEN_STATISTICS && $bFlatten) {
+                foreach ($oMatch->series as $oSeries) {
+                    for ($i = 0; $i < count($oSeries->series_items); $i++) {
+                        $oSeriesItem = $oSeries->series_items[$i];
+                        if ($oSeriesItem->kills > THRESHOLD_FLATTENING || $oSeriesItem->deaths > THRESHOLD_FLATTENING) {
                         //Eligible for flattening into earlier tiers
 
-                        // $oLastSeriesItem = $oSeries->series_items[$i - 1];
+                            $nCountPrecedingNullElements = 0;
 
-                        $nCountPrecedingNullElements = 0;
+                            $nSumKills = $oSeriesItem->kills;
+                            $nSumDeaths = $oSeriesItem->deaths;
 
-                        $nSumKills = $oSeriesItem->kills;
-                        $nSumDeaths = $oSeriesItem->deaths;
+                            $j = $i - 1;
+                            $nCountFlattened = 1;
+                            while ($j > 0 && $oSeries->series_items[$j]->deaths == 0 && $oSeries->series_items[$j]->kills == 0 && $nCountFlattened <= THRESHOLD_BACKTRACKING_COUNT) {
+                                $j--;
+                                $nCountFlattened++;
+                            }
 
-                        $j = $i - 1;
-                        $nCountFlattened = 1;
-                        // echo $i . ": ";
-                        while ($j > 0 && $oSeries->series_items[$j]->deaths == 0 && $oSeries->series_items[$j]->kills == 0 && $nCountFlattened <= THRESHOLD_BACKTRACKING_COUNT) {
-                            // echo "<-$j";
-                            $j--;
-                            $nCountFlattened++;
-                        }
-
-                        // echo "<br />";
-
-                        // echo $j . " -> ";
-
-                        if ($j > 0 && $nCountFlattened > 1 && ($oSeries->series_items[$j]->deaths < $oSeriesItem->deaths * THRESHOLD_VICTIM || $oSeries->series_items[$j]->kills < $oSeriesItem->kills * THRESHOLD_VICTIM)) {
+                            if ($j > 0 && $nCountFlattened > 1 && ($oSeries->series_items[$j]->deaths < $oSeriesItem->deaths * THRESHOLD_VICTIM || $oSeries->series_items[$j]->kills < $oSeriesItem->kills * THRESHOLD_VICTIM)) {
                             //Preceding item is too small to be correct -> flatten as well
 
-                            // echo "aay $j";
-                            $nSumKills += $oSeries->series_items[$j]->kills;
-                            $nSumDeaths += $oSeries->series_items[$j]->deaths;
-                            $j--;
-                            $nCountFlattened++;
-                        }
-
-                        // echo $i . ": " . $j . "<br />";
-                        if ($nCountFlattened > 1 && $j >= 0) {
-                            $nNewValueKills = ceil($nSumKills / ($nCountFlattened));
-                            $nNewValueDeaths = ceil($nSumDeaths / ($nCountFlattened));
-
-                            // echo "$i-" . ($j + 1) . ": $nNewValueDeaths = $nSumDeaths / " . ($i - $j) . " -> $nCountFlattened Schritte";
-
-                            $aNewValuesKills = array();
-                            $aNewValuesDeaths = array();
-                            for ($k = $j + 1; $k <= $i; $k++) {
-                                if ($nSumKills >= $nNewValueKills) {
-                                    $aNewValuesKills[$k] = $nNewValueKills;
-                                    $nSumKills -= $nNewValueKills;
-                                } else {
-                                    $aNewValuesKills[$k] = $nSumKills;
-                                    $nSumKills = 0;
-                                }
-
-                                if ($nSumDeaths >= $nNewValueDeaths) {
-                                    $aNewValuesDeaths[$k] = $nNewValueDeaths;
-                                    $nSumDeaths -= $nNewValueDeaths;
-                                } else {
-                                    $aNewValuesDeaths[$k] = $nSumDeaths;
-                                    $nSumDeaths = 0;
-                                }
+                                $nSumKills += $oSeries->series_items[$j]->kills;
+                                $nSumDeaths += $oSeries->series_items[$j]->deaths;
+                                $j--;
+                                $nCountFlattened++;
                             }
 
-                            for ($k = $j + 1; $k <= $i; $k++) {
-                                $oSeries->series_items[$k]->kills = $aNewValuesKills[$k];
-                                $oSeries->series_items[$k]->deaths = $aNewValuesDeaths[$k];
-                                $oSeries->series_items[$k]->flattened = true;
+                            if ($nCountFlattened > 1 && $j >= 0) {
+                                $nNewValueKills = ceil($nSumKills / ($nCountFlattened));
+                                $nNewValueDeaths = ceil($nSumDeaths / ($nCountFlattened));
+
+                                $aNewValuesKills = array();
+                                $aNewValuesDeaths = array();
+                                for ($k = $j + 1; $k <= $i; $k++) {
+                                    if ($nSumKills >= $nNewValueKills) {
+                                        $aNewValuesKills[$k] = $nNewValueKills;
+                                        $nSumKills -= $nNewValueKills;
+                                    } else {
+                                        $aNewValuesKills[$k] = $nSumKills;
+                                        $nSumKills = 0;
+                                    }
+
+                                    if ($nSumDeaths >= $nNewValueDeaths) {
+                                        $aNewValuesDeaths[$k] = $nNewValueDeaths;
+                                        $nSumDeaths -= $nNewValueDeaths;
+                                    } else {
+                                        $aNewValuesDeaths[$k] = $nSumDeaths;
+                                        $nSumDeaths = 0;
+                                    }
+                                }
+
+                                if ($j > 0 && $i < count($oSeries->series_items) - 1) {
+                                    $nPrevValueKills = $oSeries->series_items[$j - 1]->kills;
+                                    $nNextValueKills = $aNewValuesKills[$i];
+                                    $nPrevValueDeaths = $oSeries->series_items[$j - 1]->deaths;
+                                    $nNextValueDeaths = $aNewValuesDeaths[$i];
+
+                                    $nDifferenceFirstLastKills = $nNextValueKills - $nPrevValueKills;
+                                    $nStepKills = floor($nDifferenceFirstLastKills / $nCountFlattened);
+                                    $nDifferenceFirstLastDeaths = $nNextValueDeaths - $nPrevValueDeaths;
+                                    $nStepDeaths = floor($nDifferenceFirstLastDeaths / $nCountFlattened);
+
+                                    $j2 = $j;
+                                    $i2 = $i;
+                                    while ($j2 < $i2) {
+                                        if ($aNewValuesKills[$i2] + $nStepKills > 0 && $aNewValuesKills[$j2 + 1] - $nStepKills > 0) {
+                                            $aNewValuesKills[$i2] += $nStepKills;
+                                            $aNewValuesKills[$j2 + 1] -= $nStepKills;
+                                        }
+                                        if ($aNewValuesDeaths[$i2] + $nStepDeaths > 0 && $aNewValuesDeaths[$j2 + 1] - $nStepDeaths > 0) {
+                                            $aNewValuesDeaths[$i2] += $nStepDeaths;
+                                            $aNewValuesDeaths[$j2 + 1] -= $nStepDeaths;
+                                        }
+                                        $j2++;
+                                        $i2--;
+                                    }
+
+
+                                }
+
+
+
+                                for ($k = $j + 1; $k <= $i; $k++) {
+                                    $oSeries->series_items[$k]->kills = $aNewValuesKills[$k];
+                                    $oSeries->series_items[$k]->deaths = $aNewValuesDeaths[$k];
+                                    $oSeries->series_items[$k]->flattened = true;
+                                }
+
+                                $oMatch->flattened = true;
+
                             }
-
-                            // print_r($aNewValuesKills);
-                            // print_r($aNewValuesDeaths);
-                            // echo "<br />";
-
-                            $oMatch->flattened = true;
                         }
                     }
                 }

@@ -12,8 +12,9 @@ require_once("../inc/cache.inc.php");
 
 
 
-if (isset($_GET["current"]) || isset($_GET["all"])) {
+if (isset($_GET["current"]) || isset($_GET["all"]) || (isset($_GET["single"]) && isset($_GET["match_id"]) && !empty($_GET["match_id"]))) {
 
+    cache_clear();
     if (isset($_GET["all"])) {
         if (cache_exist("matchlist_all")) {
             exit(json_encode(cache_get("matchlist_all")));
@@ -28,6 +29,8 @@ if (isset($_GET["current"]) || isset($_GET["all"])) {
             $cWhereClause = "";
             if (isset($_GET["current"])) {
                 $cWhereClause = "where UTC_TIMESTAMP BETWEEN `match`.start_time AND `match`.end_time ";
+            } else if (isset($_GET["single"])) {
+                $cWhereClause = "where `match`.id = " . $oConnection->real_escape_string($_GET["match_id"]);
             }
 
             $cSqlStatement = "SELECT GROUP_CONCAT(match_slug.slug SEPARATOR '|') as slugs, world.arenanet_id as world_id, world.name as world_name, `match`.id as match_id, `match`.arenanet_id as match_arenanet_id, `match`.start_time as match_start, `match`.end_time as match_end, match_worlds.color, match_worlds.host, sum(match_worlds.kills_sum) as kills, SUM(match_worlds.deaths_sum) as deaths from match_worlds inner join world on world.id = match_worlds.world_id inner join `match` on `match`.id = match_worlds.match_id inner join match_slug on match_slug.match_id = `match`.id  " . $cWhereClause . " GROUP BY match_worlds.id ORDER BY `match`.start_time desc, `match`.arenanet_id asc, match_worlds.color asc, match_worlds.host desc";
