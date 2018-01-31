@@ -1,6 +1,7 @@
 <?php
 
-class link_partner {
+class link_partner
+{
     public $id;
     public $name;
 }

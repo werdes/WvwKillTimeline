@@ -279,6 +279,10 @@ ul.nav-pills>li>a {
   line-height: 24px;
 }
 
+div.header.disabled {
+  pointer-events: none;
+}
+
 span.nightmode-switch {
   width: 24px;
   height: 24px;

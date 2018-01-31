@@ -126,12 +126,16 @@
       <!-- </div> -->
     </div>
 
+    <div class="hidden" id="legal-notice">
+
+    </div>
+
     <footer class="footer">
       <p class="pull-left">&copy; 2017
         <a href="http://www.werdes.net">Werdes</a>
       </p>
       <p class="pull-right">
-        icons by
+        <a href="#/legal/">Legal notice</a> | icons by
         <a href="https://icons8.com/">icon8</a>
       </p>
     </footer>
@@ -189,15 +193,19 @@
       window.cookieconsent.initialise({
         "palette": {
           "popup": {
-            "background": "#edeff5",
-            "text": "#838391"
+            "background": "#eaf7f7",
+            "text": "#5c7291"
           },
           "button": {
-            "background": "#4b81e8"
+            "background": "#56cbdb",
+            "text": "#ffffff"
           }
         },
         "theme": "edgeless",
-        "position": "bottom-right"
+        "position": "top-right",
+        "content": {
+          "href": "#/legal/"
+        }
       })
     });
   </script>

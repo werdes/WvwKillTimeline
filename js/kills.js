@@ -13,7 +13,7 @@ $(function () {
             setCurrentMatchlist();
         });
         this.get('#/matches/all/', function (context) {
-            setAllMatchlist(0);
+            setAllMatchlist();
         });
         this.get('#/worldranking/', function (context) {
             setWorldRanking();
@@ -23,7 +23,16 @@ $(function () {
             resolveSlug(cSlug, function (oSlug) {
                 setSpecificMatch(oSlug.match_id);
             });
-        })
+        });
+        this.get('#/legal/', function (context) {
+            setView(ENUM_VIEW.NONE);
+            setLoading(true);
+
+            $('#legal-notice').load("legal.html");
+
+            setLoading(false);
+            setView(ENUM_VIEW.LEGAL);
+        });
     });
 
     oApp.run('#/matches/current/');
@@ -33,12 +42,14 @@ var ENUM_VIEW = {
     NONE: 0,
     MATCHLIST: 1,
     MATCH: 2,
-    WORLD_RANKING: 3
+    WORLD_RANKING: 3,
+    LEGAL: 4
 }
 
 $('.nightmode-switch').click(function () {
     toggleNightmode();
 });
+
 
 function checkNightmode() {
     var cNightModeCookie = $.cookie('nightmode');
@@ -74,7 +85,10 @@ function setView(nView) {
     $('#matchlist').addClass('hidden');
     $('#match').addClass('hidden');
     $('#world-ranking').addClass('hidden');
+    $('#legal-notice').addClass('hidden');
     $('#matchlist-search').val('');
+
+    $('div.header').addClass('disabled');
 
     if (nView == ENUM_VIEW.NONE) {
         $("body").children(".fixedHeader").each(function () {
@@ -88,10 +102,16 @@ function setView(nView) {
     } else
     if (nView == ENUM_VIEW.MATCH) {
         $('#match').removeClass('hidden');
+        $('div.header').removeClass('disabled');
     } else if (nView == ENUM_VIEW.MATCHLIST) {
         $('#matchlist').removeClass('hidden');
+        $('div.header').removeClass('disabled');
     } else if (nView == ENUM_VIEW.WORLD_RANKING) {
         $('#world-ranking').removeClass('hidden');
+        $('div.header').removeClass('disabled');
+    } else if (nView == ENUM_VIEW.LEGAL) {
+        $('#legal-notice').removeClass('hidden');
+        $('div.header').removeClass('disabled');
     }
 }
 
@@ -130,7 +150,7 @@ function getWorlds(oMatch) {
 
 function resolveSlug(cSlug, callback) {
     $.ajax({
-        url: "inc/slug.php?slug=" + cSlug + "&" + $.now(),
+        url: "api/slug/" + cSlug + "?" + $.now(),
         caching: false,
         dataType: "json",
         complete: function (oData) {
@@ -150,7 +170,7 @@ function setSpecificMatch(cRequestedMatchId) {
     setView(ENUM_VIEW.NONE);
 
     $.ajax({
-        url: "inc/matchlist.php?single&match_id=" + cRequestedMatchId + "&" + $.now(),
+        url: "api/matchlist/single/" + cRequestedMatchId + "?" + $.now(),
         caching: false,
         dataType: "json",
         complete: function (oData) {
@@ -173,7 +193,7 @@ function setWorldRanking() {
     setView(ENUM_VIEW.NONE);
     setLoading(true);
     $.ajax({
-        url: "inc/world_ranking.php?" + $.now(),
+        url: "api/worldranking?" + $.now(),
         dataType: "json",
         complete: function (oData) {
             m_oDataTableRanking = $('#table-world-ranking').DataTable({
@@ -223,7 +243,7 @@ function setWorldRanking() {
     });
 }
 
-function setAllMatchlist(nStep) {
+function setAllMatchlist() {
     var cContainerId = '#matchlist-container';
 
     setLoading(true);
@@ -232,7 +252,7 @@ function setAllMatchlist(nStep) {
     setView(ENUM_VIEW.NONE);
 
     $.ajax({
-        url: "inc/matchlist.php?all&step=" + nStep + "&" + $.now(),
+        url: "api/matchlist/all?" + $.now(),
         dataType: "json",
         complete: function (oData) {
 
@@ -263,7 +283,7 @@ function setAllMatchlist(nStep) {
 function setCurrentMatchlistMainMenu() {
     var cMenuContainerId = '#menu-current-matchups';
     $.ajax({
-        url: "inc/matchlist.php?current&" + $.now(),
+        url: "api/matchlist/current?" + $.now(),
         dataType: "json",
         complete: function (oData) {
 
@@ -308,7 +328,7 @@ function setCurrentMatchlist() {
     setLoading(true);
 
     $.ajax({
-        url: "inc/matchlist.php?current&" + $.now(),
+        url: "api/matchlist/current?" + $.now(),
         dataType: "json",
         complete: function (oData) {
             setView(ENUM_VIEW.NONE);
@@ -399,9 +419,10 @@ function setMatch(cMatchId, oMatchlistMatch) {
     $('#disable-flattening').removeClass('hidden');
     $('#enable-flattening').removeClass('hidden');
 
+    var cFlatteningOption = m_bFlattening ? "flattened" : "unaltered";
 
     $.ajax({
-        url: "inc/match.php?match_id=" + cMatchId + "&flattening=" + m_bFlattening + "&" + $.now(),
+        url: "api/match/" + cMatchId + "/" + cFlatteningOption + "?" + $.now(),
         dataType: "json",
         complete: function (oData) {
             var oMatch = oData.responseJSON;
@@ -422,12 +443,14 @@ function setMatch(cMatchId, oMatchlistMatch) {
             m_oHighchartsKills.setTitle({
                 text: aWorlds['green'] + " / " + aWorlds['blue'] + " / " + aWorlds['red']
             });
-            if (!oMatch.flattened) {
-                $('#disable-flattening').addClass('hidden');
-            } else {
-                $('#enable-flattening').addClass('hidden');
-            }
 
+            $('#disable-flattening').addClass('hidden');
+            $('#enable-flattening').addClass('hidden');
+            if (oMatch.flattening_requested && oMatch.flattened) {
+                $('#disable-flattening').removeClass('hidden');
+            } else if (!oMatch.flattening_requested) {
+                $('#enable-flattening').removeClass('hidden');
+            }
             var nSeriesItemIndex = 0;
             var oFirstSeries = oMatch.series[Object.keys(oMatch.series)[0]];
             for (var cSeriesItemKey in oFirstSeries.series_items) {
