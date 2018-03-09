@@ -6,6 +6,7 @@ class matchlist_entry
     public $start;
     public $end;
     public $slugs;
+    public $last_update;
 
     public $worlds;
 

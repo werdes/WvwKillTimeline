@@ -3,6 +3,8 @@ var m_bDebug = false;
 var m_oDataTableRanking = null;
 var m_bFlattening = true;
 
+var _STATISTICS_VIEW = null;
+
 $(function () {
     checkNightmode();
     new Clipboard('#copy-shortlink');
@@ -248,7 +250,7 @@ function setAllMatchlist() {
 
     setLoading(true);
     $(cContainerId).html("");
-    resetChart();
+    resetView();
     setView(ENUM_VIEW.NONE);
 
     $.ajax({
@@ -363,7 +365,7 @@ function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
     var cUrl = '#/matches/' + getLongestInArray(oMatch.slugs) + "/";
     console.log(cUrl);
 
-    $(cContainerId).append('<div id="' + cMatchId + '" class="list-group-item"><div class="row"><div class="col-md-1"><div class="matchlist-eyecatcher"><span class="matchlist-region">' + cRegion + '</span><span class="matchlist-tier">Tier ' + cTier + '</span></div></div><div class="col-md-10"><a class="match-container" data-match-id="' + oMatch.id + '"></a></div><div class="col-md-1"><a class="get-shortlink btn btn-default btn-xs pull-right" data-toggle="modal" data-target="#modal-shortlink" role="button" data-match-slug="' + getLongestInArray(oMatch.slugs) + '"><i class="glyphicon glyphicon-link"></i> Shortlink</a>' + cDebugInfo + '</div></div></div>');
+    $(cContainerId).append('<div id="' + cMatchId + '" class="list-group-item"><div class="row"><div class="col-md-1"><div class="matchlist-eyecatcher"><span class="matchlist-region">' + cRegion + '</span><span class="matchlist-tier">Tier ' + cTier + '</span></div></div><div class="col-md-9"><a class="match-container" data-match-id="' + oMatch.id + '"></a></div><div class="col-md-2"><a class="get-shortlink btn btn-default btn-xs pull-right" data-toggle="modal" data-target="#modal-shortlink" role="button" data-match-slug="' + getLongestInArray(oMatch.slugs) + '"><i class="glyphicon glyphicon-link"></i> Shortlink</a><span class="matchlist-last-update pull-right">updated ' + moment.utc(oMatch.last_update).local().fromNow() + '</span>' + cDebugInfo + '</div></div></div>');
 
     var cContainer = '<div class="matchlist-worldlist">';
 
@@ -413,7 +415,7 @@ function setMatch(cMatchId, oMatchlistMatch) {
 
     setView(ENUM_VIEW.NONE);
     setLoading(true);
-    resetChart();
+    resetView();
 
     m_oHighchartsKills = new Highcharts.stockChart(getChartOptions());
     $('#disable-flattening').removeClass('hidden');
@@ -439,6 +441,8 @@ function setMatch(cMatchId, oMatchlistMatch) {
             $('div#match > a.get-shortlink').attr('data-match-slug', cLongestSlug);
 
             $('#match-title').html(moment(oMatch.match_start).format("YYYY.MM.DD") + " - " + moment(oMatch.match_end).format("YYYY.MM.DD") + " <small>" + cRegion + " Tier " + cTier + "</small>");
+
+            $('#match-last-update').html("Last updated at " + moment.utc(oMatch.last_update).local().format("HH:mm:ss") + " (" + moment.utc(oMatch.last_update).local().fromNow() + ")");
 
             m_oHighchartsKills.setTitle({
                 text: aWorlds['green'] + " / " + aWorlds['blue'] + " / " + aWorlds['red']
@@ -498,8 +502,6 @@ function setMatch(cMatchId, oMatchlistMatch) {
                 i++;
             };
 
-            //Statistik
-            setMatchStatistics(oMatch, oMatchlistMatch);
 
             $('#reload-chart').attr('data-match-id', cMatchId);
             $('#disable-flattening').attr('data-match-id', cMatchId);
@@ -508,6 +510,11 @@ function setMatch(cMatchId, oMatchlistMatch) {
             if (oMatch.flattened) {
                 setMessage("Due to issues with the <strong>Guild Wars 2 API</strong> the data of this match has been flattened to be more precise.<br />Please note, that this has altered the timeline of when kills occured. The kill and death counts are correct. I know it's not pretty, but that's as much as i can do 🔥.", "warning");
             }
+
+            //Statistik
+            setStatisticsView(oMatch);
+            initMatchStatistics(oMatch, oMatchlistMatch);
+            setStatistics(-1);
 
             m_oHighchartsKills.redraw();
             setLoading(false);
@@ -519,6 +526,74 @@ function setMatch(cMatchId, oMatchlistMatch) {
             setMessage('<b>' + cStatus + '</b><br />' + cError, 'danger');
         }
     })
+}
+
+function setStatisticsView(oMatch) {
+    _STATISTICS_VIEW = {
+        worlds: {},
+        timeslots: {}
+    };
+
+
+    for (var cSeriesKey in oMatch.series) {
+        var oSeries = oMatch.series[cSeriesKey];
+        var cMapId = oSeries.map_id;
+        var cWorldId = oSeries.world_id;
+
+        if (!_STATISTICS_VIEW.worlds[cWorldId]) {
+
+            _STATISTICS_VIEW.worlds[cWorldId] = {
+                world_name: oSeries.world_name,
+                world_id: oSeries.world_id,
+                color: oSeries.color,
+                maps: {}
+            }
+        }
+
+        if (!_STATISTICS_VIEW.worlds[cWorldId].maps[cMapId]) {
+            _STATISTICS_VIEW.worlds[cWorldId].maps[cMapId] = {
+                map_id: oSeries.map_id,
+                kills: 0,
+                deaths: 0
+            }
+        }
+
+        for (var nSeriesItemIndex in oSeries.series_items) {
+            var oSeriesItem = oSeries.series_items[nSeriesItemIndex];
+            var cTimeslotId = oSeriesItem.timeslot_id.toString();
+
+            if (!_STATISTICS_VIEW.timeslots[cTimeslotId]) {
+                _STATISTICS_VIEW.timeslots[cTimeslotId] = {
+                    timeslot_id: oSeriesItem.timeslot_id,
+                    timeslot_start: oSeriesItem.timeslot_start,
+                    timeslot_end: oSeriesItem.timeslot_end,
+                    worlds: {}
+                }
+            }
+
+            if (!_STATISTICS_VIEW.timeslots[cTimeslotId].worlds[cWorldId]) {
+                _STATISTICS_VIEW.timeslots[cTimeslotId].worlds[cWorldId] = {
+                    world_name: oSeries.world_name,
+                    world_id: oSeries.world_id,
+                    color: oSeries.color,
+                    maps: {}
+                }
+            }
+
+            if (!_STATISTICS_VIEW.timeslots[cTimeslotId].worlds[cWorldId].maps[cMapId]) {
+                _STATISTICS_VIEW.timeslots[cTimeslotId].worlds[cWorldId].maps[cMapId] = {
+                    map_id: oSeries.map_id,
+                    kills: 0,
+                    deaths: 0
+                }
+            }
+
+            _STATISTICS_VIEW.worlds[cWorldId].maps[cMapId].kills += parseInt(oSeriesItem.kills);
+            _STATISTICS_VIEW.worlds[cWorldId].maps[cMapId].deaths += parseInt(oSeriesItem.deaths);
+            _STATISTICS_VIEW.timeslots[cTimeslotId].worlds[cWorldId].maps[cMapId].kills += parseInt(oSeriesItem.kills);
+            _STATISTICS_VIEW.timeslots[cTimeslotId].worlds[cWorldId].maps[cMapId].deaths += parseInt(oSeriesItem.deaths);
+        }
+    }
 }
 
 function setMessage(cMessage, cType) {
@@ -572,14 +647,15 @@ function setSeries(oSeries, aWorlds, aMaps, i, cDeathsKills) {
             }
         }
         m_oHighchartsKills.series[i].addPoint({
-            x: Date.parse(oSeriesItem.timeslot_start),
+            x: Date.parse(moment.utc(oSeriesItem.timeslot_start).local().format()),
             y: nValue,
-            name: oSeriesItem.timeslot_start + ' to ' + oSeriesItem.timeslot_end,
+            name: '<strong>' + moment.utc(oSeriesItem.timeslot_start).local().format('YYYY/MM/DD | dddd') + '</strong><br />' + moment.utc(oSeriesItem.timeslot_start).local().format('HH:mm:ss ') + ' to ' + moment.utc(oSeriesItem.timeslot_end).local().format('HH:mm:ss '),
             world: oSeries.world_id,
             map: oSeries.map_id,
             kills: parseInt(oSeriesItem.kills),
             deaths: parseInt(oSeriesItem.deaths),
             flattened: oSeriesItem.flattened,
+            timeslot_id: oSeriesItem.timeslot_id,
             seriesindex: i,
             marker: oMarker
         }, false);
@@ -587,7 +663,7 @@ function setSeries(oSeries, aWorlds, aMaps, i, cDeathsKills) {
     };
 }
 
-function setMatchStatistics(oMatch, oMatchlistMatch) {
+function initMatchStatistics(oMatch, oMatchlistMatch) {
     var cContainerId = '#match-statistics-container';
     var aWorlds = new Array();
     var aWorldColors = getMapColors();
@@ -606,15 +682,7 @@ function setMatchStatistics(oMatch, oMatchlistMatch) {
             };
         }
         aWorlds[cKey].maps[oSeries.map_id] = {
-            map_id: oSeries.map_id,
-            kills: 0,
-            deaths: 0
-        };
-
-        for (var cSeriesItemKey in oSeries.series_items) {
-            var oSeriesItem = oSeries.series_items[cSeriesItemKey];
-            aWorlds[cKey].maps[oSeries.map_id].kills += parseInt(oSeriesItem.kills);
-            aWorlds[cKey].maps[oSeries.map_id].deaths += parseInt(oSeriesItem.deaths);
+            map_id: oSeries.map_id
         };
     }
 
@@ -623,7 +691,7 @@ function setMatchStatistics(oMatch, oMatchlistMatch) {
     for (var cWorldKey in aWorlds) {
         oWorld = aWorlds[cWorldKey];
         cContainerContent += '<div class="col-md-4 world-container ' + oWorld.world_id + '" data-world-name="' + oWorld.world_name + '">';
-        cContainerContent += '<div class="row"><div class="col-md-9"><h4>' + oWorld.world_name + '</h4><span class="copy-statistics copy-' + oWorld.world_id + '" title="Copy statistics to clipboard"><i class="glyphicon glyphicon-copy"></i></span></div><div class="col-md-3 world-kd ' + oWorld.world_id + '"><h4>&empty;1.00</h4></div></div><h6>';
+        cContainerContent += '<div class="row"><div class="col-md-9"><h4>' + oWorld.world_name + '</h4><span class="copy-statistics copy-' + oWorld.world_id + '" title="Copy statistics to clipboard"><i class="glyphicon glyphicon-copy"></i></span></div><div class="col-md-3"><h4 class=" world-kd ' + oWorld.world_id + '"></h4></div></div><h6>';
 
         var i = 0;
         for (var cAddtionalWorldKey in oMatchlistMatch.worlds[oWorld.color].additional_worlds) {
@@ -638,17 +706,17 @@ function setMatchStatistics(oMatch, oMatchlistMatch) {
         for (var cMapId in oWorld.maps) {
             var oMap = oWorld.maps[cMapId];
             var cMapName = oMap.map_id == "38" ? "EBG" : "Border";
-            var cKDR = getKdr(oMap.kills, oMap.deaths);
 
-            var aWidths = getWidths(parseInt(oMap.kills), parseInt(oMap.deaths));
+            cContainerContent += '<div class="row kd" data-world="' + oWorld.world_id + '" data-map-id="' + cMapId + '" data-color="' + aWorldColors[oMap.map_id] + '" data-world-name="' + oWorld.world_name + '" data-map-name="' + cMapName + '">';
 
-            cContainerContent += '<div class="row kd" data-kills="' + oMap.kills + '" data-deaths="' + oMap.deaths + '" data-world="' + oWorld.world_id + '" data-map-id="' + cMapId + '" data-color="' + aWorldColors[oMap.map_id] + '" data-world-name="' + oWorld.world_name + '" data-map-name="' + cMapName + '">';
-
-            cContainerContent += '<div class="col-md-2" style="color: ' + aWorldColors[oMap.map_id] + '">' + cMapName + '</div><div class="col-md-7"><div class="progress"><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' kills no-nightmode" title="kills" role="progressbar" style="width: ' + aWidths[0] + '%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, false) + ';"  >' + oMap.kills + '</div><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' deaths no-nightmode" style="width: ' + aWidths[1] + '%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, true) + ';" title="deaths">' + oMap.deaths + '</div></div></div><div class="col-md-3 ' + cMapId + ' ' + oWorld.world_id + ' kdr">&empty;' + cKDR + '</div>';
+            cContainerContent += '<div class="col-md-2" style="color: ' + aWorldColors[oMap.map_id] + '">' + cMapName + '</div><div class="col-md-7"><div class="progress"><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' kills no-nightmode" title="kills" role="progressbar" style="width: 50%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, false) + ';"  ></div><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' deaths no-nightmode" style="width: 50%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, true) + ';" title="deaths"></div></div></div><div class="col-md-3 ' + cMapId + ' ' + oWorld.world_id + ' kdr"></div>';
 
             cContainerContent += '</div>';
         }
-        cContainerContent += '</div>';
+
+        cContainerContent += '<div class="row kd-total" data-world="' + oWorld.world_id + '"><div class="col-md-2"><strong>Total</strong></div><div class="col-md-7"><div class="progress"><div class="progress-bar kills total ' + oWorld.world_id + '  no-nightmode" title="kills" role="progressbar" style="width: 50%; background-color: ' + shadeColor(colorNameToHex(oWorld.color), 0.3) + ';"  ></div><div class="progress-bar ' + oWorld.world_id + ' total deaths no-nightmode" style="width: 50%; background-color: ' + shadeColor(colorNameToHex(oWorld.color), -0.3) + ';" title="deaths"></div></div></div><div class="col-md-3"><strong><span class="kdr total ' + oWorld.world_id + ' "></span></strong></div></div>';
+
+        cContainerContent += "</div>";
     }
     cContainerContent += '</div>';
 
@@ -659,29 +727,74 @@ function setMatchStatistics(oMatch, oMatchlistMatch) {
         setTimeout(function () {
             $('.highlight').removeClass('highlight');
         }, 1000);
-    })
+    });
+
     for (var cWorldKey in aWorlds) {
-        for (var cMap in aWorlds[cWorldKey].maps) {
-            setWorldKdr(aWorlds[cWorldKey].world_id, aWorlds[cWorldKey].maps[cMap].kills, aWorlds[cWorldKey].maps[cMap].deaths);
-        }
 
         $('.copy-' + aWorlds[cWorldKey].world_id).attr('data-clipboard-text', getClipboardWorld(aWorlds[cWorldKey].world_id));
         new Clipboard('.copy-' + aWorlds[cWorldKey].world_id);
     }
 }
 
+function setStatistics(nTimeslotId) {
+    if (nTimeslotId == -1) {
+        //ALL
+        for (var nWorldId in _STATISTICS_VIEW.worlds) {
+            var oWorld = _STATISTICS_VIEW.worlds[nWorldId];
+            setStatisticForWorld(oWorld);
+        }
+    } else {
+        //Timeslot
+        for (var nWorldId in _STATISTICS_VIEW.timeslots[nTimeslotId].worlds) {
+            var oWorld = _STATISTICS_VIEW.timeslots[nTimeslotId].worlds[nWorldId];
+            setStatisticForWorld(oWorld);
+        }
+    }
+}
+
+function setStatisticForWorld(oWorld) {
+    var nSumKills = 0;
+    var nSumDeaths = 0;
+
+
+    for (var nMapId in oWorld.maps) {
+        var oMap = oWorld.maps[nMapId];
+        var oWidths = getWidths(oMap.kills, oMap.deaths);
+
+
+        $('.progress-bar.' + oWorld.world_id + '.' + oMap.map_id + ".kills").css("width", oWidths.kills).text(oMap.kills);
+        $('.progress-bar.' + oWorld.world_id + '.' + oMap.map_id + ".deaths").css("width", oWidths.deaths).text(oMap.deaths);
+        $('.kdr.' + oWorld.world_id + '.' + oMap.map_id).html("&empty;" + getKdr(oMap.kills, oMap.deaths));
+
+        nSumKills += oMap.kills;
+        nSumDeaths += oMap.deaths;
+    }
+
+    var oTotalWidths = getWidths(nSumKills, nSumDeaths);
+
+    $('.progress-bar.' + oWorld.world_id + '.total.kills').css("width", oTotalWidths.kills).text(nSumKills);
+    $('.progress-bar.' + oWorld.world_id + '.total.deaths').css("width", oTotalWidths.deaths).text(nSumDeaths);
+    $('.world-kd.' + oWorld.world_id).html("&empty;" + getKdr(nSumKills, nSumDeaths));
+    $('.kdr.total.' + oWorld.world_id).html("&empty;" + getKdr(nSumKills, nSumDeaths));
+}
+
 function getClipboardWorld(nWorldId) {
+
+    var oWorld = _STATISTICS_VIEW.worlds[nWorldId];
+
     var nFullDeaths = 0;
     var nFullKills = 0;
     var aMaps = new Array();
-    var cWorldName = $('.world-container.' + nWorldId).attr('data-world-name');
+    var cWorldName = oWorld.world_name;
+    var aWorldColors = getMapColors();
 
-    $('.world-container.' + nWorldId).children('.row.kd').each(function () {
-        var nKills = parseInt($(this).attr('data-kills'));
-        var nDeaths = parseInt($(this).attr('data-deaths'));
-        var cWorld = $(this).attr('data-world-name');
-        var cMap = $(this).attr('data-map-name');
-        var cColor = $(this).attr('data-color');
+    for (var nMapId in oWorld.maps) {
+        var oMap = oWorld.maps[nMapId];
+        var nKills = parseInt(oMap.kills);
+        var nDeaths = parseInt(oMap.deaths);
+        var cWorld = oWorld.world_name;
+        var cMap = oMap.map_id == "38" ? "EBG" : "Border";
+        var cColor = aWorldColors[oMap.map_id];
 
         nFullDeaths += nDeaths;
         nFullKills += nKills;
@@ -693,7 +806,7 @@ function getClipboardWorld(nWorldId) {
         cOutput += cMap;
 
         aMaps.push(cOutput);
-    });
+    }
 
 
     var cWorldOverall = cWorldName + ": " + getKdr(nFullKills, nFullDeaths) + ' k/d (' + nFullKills + '/' + nFullDeaths + ') | ';
@@ -702,13 +815,15 @@ function getClipboardWorld(nWorldId) {
 }
 
 //Resets all Chart series
-function resetChart() {
+function resetView() {
     if (m_oHighchartsKills != undefined &&
         m_oHighchartsKills != null) {
         m_oHighchartsKills.destroy();
         m_oHighchartsKills = undefined;
         $('main-chart-container').html('');
     }
+
+    _STATISTICS_VIEW = null;
 }
 
 function getFlagShort(cWorldId) {
@@ -765,7 +880,7 @@ function getChartOptions() {
             labels: {
                 align: 'left',
                 formatter: function () {
-                    var oCorrectedDate = moment(this.value).add(15, 'minutes').format("HH:mm");
+                    var oCorrectedDate = moment.utc(this.value).add(15, 'minutes').local().format("HH:mm");
                     return oCorrectedDate;
                 }
             }
@@ -812,8 +927,6 @@ function getChartOptions() {
     return oChartOptions;
 }
 
-
-
 function newGuid() {
     return (S4() + S4() + "-" + S4() + "-4" + S4().substr(0, 3) + "-" + S4() + "-" + S4() + S4() + S4()).toLowerCase();
 }
@@ -851,15 +964,15 @@ function getMapChartColor(cColor, nMapId, bDeaths) {
     return a;
 }
 
-function colorNameToHex(colour) {
-    var colours = {
+function colorNameToHex(color) {
+    var colors = {
         "blue": "#0000ff",
         "green": "#008000",
         "red": "#ff0000"
     };
 
-    if (typeof colours[colour.toLowerCase()] != 'undefined')
-        return colours[colour.toLowerCase()];
+    if (typeof colors[color.toLowerCase()] != 'undefined')
+        return colors[color.toLowerCase()];
 
     return false;
 }
@@ -889,73 +1002,38 @@ function blendColors(c0, c1, p) {
 Highcharts.Point.prototype.tooltipFormatter = function (bUseHeader) {
     var oPoint = this,
         oSeries = oPoint.series;
+    if (oPoint.seriesindex == 0) {
 
-    var cSelectorKills = '.progress-bar.kills.' + oPoint.map + '.' + oPoint.world;
-    var cSelectorDeaths = '.progress-bar.deaths.' + oPoint.map + '.' + oPoint.world;
-    var cSelectorKdr = '.kdr.' + oPoint.map + '.' + oPoint.world;
-    var cKDR = getKdr(oPoint.kills, oPoint.deaths);
-
-    var aWidths = getWidths(oPoint.kills, oPoint.deaths);
-
-
-    $(cSelectorKills).text(oPoint.kills);
-    $(cSelectorDeaths).text(oPoint.deaths);
-    $(cSelectorKdr).html("&empty;" + cKDR);
-
-    $(cSelectorKills).css("width", aWidths[0] + "%");
-    $(cSelectorDeaths).css("width", aWidths[1] + "%");
-    setWorldKdr(oPoint.world, oPoint.kills, oPoint.deaths);
+        setStatistics(oPoint.timeslot_id);
+    }
 
     var cFlatteningNote = oPoint.flattened && oPoint.seriesindex == 0 ? '<br />! This value has been altered by the error correction mechanism !' : '';
 
-    return cFlatteningNote; //(bUseHeader ? "b" : "a"); //('<b>x = ' + (oPoint.name || oPoint.x) + ',</b> ') : 'a');
-    /*['<span style="color:' + oSeries.color + '">', oSeries.name, '</span>: ',
-        (!bUseHeader ? ('<b>x = ' + (oPoint.name || oPoint.x) + ',</b> ') : ''),
-        '<b>', (!bUseHeader ? 'y = ' : ''), Highcharts.numberFormat(Math.abs(oPoint.y), 0), '</b><br />'
-    ].join('');*/
+    return cFlatteningNote;
 };
 
 $('#main-chart-container').mouseleave(function () {
-    $('.row.kd').each(function () {
-        setTotalNumbersInStatistics(this);
-    });
+    setStatistics(-1);
 });
 
-function setTotalNumbersInStatistics(oHandler) {
-    var nKills = $(oHandler).data('kills');
-    var nDeaths = $(oHandler).data('deaths');
-
-    var oHandlerDeaths = $(oHandler).find('.progress-bar.deaths');
-    var oHandlerKills = $(oHandler).find('.progress-bar.kills');
-    var oHandlerKdr = $(oHandler).find('.kdr');
-
-    var aWidths = getWidths(nKills, nDeaths);
-
-    var cKDR = getKdr(nKills, nDeaths);
-
-    $(oHandlerDeaths).text(nDeaths);
-    $(oHandlerKills).text(nKills);
-    $(oHandlerDeaths).css("width", aWidths[1] + "%");
-    $(oHandlerKills).css("width", aWidths[0] + "%");
-    $(oHandlerKdr).html("&empty;" + cKDR);
-
-    setWorldKdr($(oHandler).attr('data-world'), nKills, nDeaths);
-
-    m_oHighchartsKills.setTitle({
-        text: m_oHighchartsKills.title.textStr
-    });
-}
-
 function getWidths(nKills, nDeaths) {
-    var aRetVal = new Array();
+    var oRetVal = null;
 
     if (nKills == 0 && nDeaths == 0) {
-        aRetVal = [50, 50];
+        // oRetVal = [50, 50];
+        oRetVal = {
+            kills: "50%",
+            deaths: "50%"
+        }
     } else {
-        aRetVal = [100 * nKills / (nKills + nDeaths), 100 * nDeaths / (nKills + nDeaths)];
+        // oRetVal = [100 * nKills / (nKills + nDeaths), 100 * nDeaths / (nKills + nDeaths)];
+        oRetVal = {
+            kills: (100 * nKills / (nKills + nDeaths)).toString() + "%",
+            deaths: (100 * nDeaths / (nKills + nDeaths)).toString() + "%"
+        }
     }
 
-    return aRetVal;
+    return oRetVal;
 }
 
 function getKdr(nKills, nDeaths) {
@@ -965,7 +1043,7 @@ function getKdr(nKills, nDeaths) {
         }
         return '&infin;';
     }
-    return "0.00";
+    return "1.00";
 }
 
 
@@ -981,38 +1059,6 @@ function checkParameter(name) {
     var regex = new RegExp("[\\?&]" + name + "([^&#]*)"),
         results = regex.exec(location.search);
     return results !== null;
-}
-
-function setWorldKdr(nWorld, nKills, nDeaths) {
-    var cSelectorWorld = '.world-kd.' + nWorld;
-
-    var nCount = $(cSelectorWorld).attr('data-count');
-    if (typeof nCount === 'undefined') {
-        $(cSelectorWorld).attr('data-count', 0);
-        $(cSelectorWorld).attr('data-kills', 0);
-        $(cSelectorWorld).attr('data-deaths', 0);
-        nCount = 0;
-    } else {
-        nCount = parseInt(nCount);
-    }
-
-    $(cSelectorWorld).attr('data-count', nCount + 1);
-    $(cSelectorWorld).attr('data-kills', parseInt($(cSelectorWorld).attr('data-kills')) + nKills);
-    $(cSelectorWorld).attr('data-deaths', parseInt($(cSelectorWorld).attr('data-deaths')) + nDeaths);
-
-    nCount = $(cSelectorWorld).attr('data-count');
-
-    if (nCount == 4) {
-        var nKillsSum = parseInt($(cSelectorWorld).attr('data-kills'));
-        var nDeathsSum = parseInt($(cSelectorWorld).attr('data-deaths'));
-        $(cSelectorWorld).html('<h4>&empty;' + getKdr(nKillsSum, nDeathsSum) + "</h4>");
-
-        $(cSelectorWorld).attr('data-count', 0);
-        $(cSelectorWorld).attr('data-kills', 0);
-        $(cSelectorWorld).attr('data-deaths', 0);
-
-
-    }
 }
 
 $('#matchlist-search').on('input', function () {

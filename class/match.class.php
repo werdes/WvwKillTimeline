@@ -7,6 +7,7 @@ class match
     public $match_end;
     public $flattened;
     public $flattening_requested;
+    public $last_update;
     public $series;
 
     function __construct()
