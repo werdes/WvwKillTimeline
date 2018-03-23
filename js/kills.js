@@ -731,7 +731,7 @@ function initMatchStatistics(oMatch, oMatchlistMatch) {
 
     for (var cWorldKey in aWorlds) {
 
-        $('.copy-' + aWorlds[cWorldKey].world_id).attr('data-clipboard-text', getClipboardWorld(aWorlds[cWorldKey].world_id));
+        $('.copy-' + aWorlds[cWorldKey].world_id).attr('data-clipboard-text', getClipboardWorld(aWorlds[cWorldKey].world_id, oMatch));
         new Clipboard('.copy-' + aWorlds[cWorldKey].world_id);
     }
 }
@@ -778,7 +778,7 @@ function setStatisticForWorld(oWorld) {
     $('.kdr.total.' + oWorld.world_id).html("&empty;" + getKdr(nSumKills, nSumDeaths));
 }
 
-function getClipboardWorld(nWorldId) {
+function getClipboardWorld(nWorldId, oMatch) {
 
     var oWorld = _STATISTICS_VIEW.worlds[nWorldId];
 
@@ -793,7 +793,7 @@ function getClipboardWorld(nWorldId) {
         var nKills = parseInt(oMap.kills);
         var nDeaths = parseInt(oMap.deaths);
         var cWorld = oWorld.world_name;
-        var cMap = oMap.map_id == "38" ? "EBG" : "Border";
+        var cMap = oMap.map_id == "38" ? "EBG" : "BL";
         var cColor = aWorldColors[oMap.map_id];
 
         nFullDeaths += nDeaths;
@@ -811,7 +811,8 @@ function getClipboardWorld(nWorldId) {
 
     var cWorldOverall = cWorldName + ": " + getKdr(nFullKills, nFullDeaths) + ' k/d (' + nFullKills + '/' + nFullDeaths + ') | ';
 
-    return cWorldOverall + aMaps.join(' | ');
+
+    return cWorldOverall + aMaps.join(' | ') + ' - updated ' + moment.utc(oMatch.last_update).local().fromNow();
 }
 
 //Resets all Chart series
