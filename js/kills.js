@@ -14,7 +14,7 @@ $(function () {
         this.get('#/matches/current/', function (context) {
             setCurrentMatchlist();
         });
-        this.get('#/matches/all/', function (context) {
+        this.get('#/matches/archive/', function (context) {
             setAllMatchlist();
         });
         this.get('#/worldranking/', function (context) {
@@ -23,7 +23,11 @@ $(function () {
         this.get('#/matches/:slug/', function (context) {
             var cSlug = this.params['slug'];
             resolveSlug(cSlug, function (oSlug) {
-                setSpecificMatch(oSlug.match_id);
+                if (oSlug != null) {
+                    setSpecificMatch(oSlug.match_id);
+                } else {
+                    window.location = '#/matches/current/';
+                }
             });
         });
         this.get('#/legal/', function (context) {
@@ -35,10 +39,21 @@ $(function () {
             setLoading(false);
             setView(ENUM_VIEW.LEGAL);
         });
+        this.bind('location-changed', function (e, data) {
+            handlePageSwitch(e.currentTarget.baseURI);
+        });
     });
 
     oApp.run('#/matches/current/');
+
+    $('#current-year').text(moment().format("YYYY"));
 });
+
+function handlePageSwitch(targetUri) {
+    targetUri = '#' + targetUri.split('#')[1];
+    $('div.branding-container, ul.nav-pills>li').removeClass('active');
+    $('.branding[href="' + targetUri + '"], ul.nav-pills>li>a[href="' + targetUri + '"]').parent().addClass('active');
+}
 
 var ENUM_VIEW = {
     NONE: 0,
@@ -158,6 +173,8 @@ function resolveSlug(cSlug, callback) {
         complete: function (oData) {
             if (oData != null && oData.responseJSON != null) {
                 callback(oData.responseJSON);
+            } else {
+                callback(null);
             }
         },
         error: function (oXhr, cStatus, cError) {
@@ -248,6 +265,7 @@ function setWorldRanking() {
 function setAllMatchlist() {
     var cContainerId = '#matchlist-container';
 
+
     setLoading(true);
     $(cContainerId).html("");
     resetView();
@@ -266,7 +284,7 @@ function setAllMatchlist() {
                 var oMatch = oData.responseJSON[cMatchId];
                 var cCurrStartDate = moment(oMatch.start).utc().format('YYYY.MM.DD');
                 if (cCurrStartDate != cLastStartDate) {
-                    $(cContainerId).append('<h2>' + moment(oMatch.start).format('YYYY.MM.DD') + ' - ' + moment(oMatch.end).format('YYYY.MM.DD') + '</h2>');
+                    $(cContainerId).append('<h2>' + moment.utc(oMatch.start).local().format('YYYY.MM.DD') + ' - ' + moment.utc(oMatch.end).local().format('YYYY.MM.DD') + '</h2></div>');
                     cLastStartDate = cCurrStartDate;
                 }
                 setMatchlistMatchContainer(cContainerId, cMatchId, oMatch);
@@ -363,16 +381,15 @@ function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
     aSearchQuery.push(moment(oMatch.end).format('YYYY.MM.DD'));
 
     var cUrl = '#/matches/' + getLongestInArray(oMatch.slugs) + "/";
-    console.log(cUrl);
 
-    $(cContainerId).append('<div id="' + cMatchId + '" class="list-group-item"><div class="row"><div class="col-md-1"><div class="matchlist-eyecatcher"><span class="matchlist-region">' + cRegion + '</span><span class="matchlist-tier">Tier ' + cTier + '</span></div></div><div class="col-md-9"><a class="match-container" data-match-id="' + oMatch.id + '"></a></div><div class="col-md-2"><a class="get-shortlink btn btn-default btn-xs pull-right" data-toggle="modal" data-target="#modal-shortlink" role="button" data-match-slug="' + getLongestInArray(oMatch.slugs) + '"><i class="glyphicon glyphicon-link"></i> Shortlink</a><span class="matchlist-last-update pull-right">updated ' + moment.utc(oMatch.last_update).local().fromNow() + '</span>' + cDebugInfo + '</div></div></div>');
+    $(cContainerId).append('<div id="' + cMatchId + '" class="list-group-item"><div class="row"><div class="col-md-1"><div class="matchlist-eyecatcher"><span class="matchlist-region">' + cRegion + '</span><span class="matchlist-tier">Tier ' + cTier + '</span></div></div><div class="col-md-9"><a class="match-container" data-match-id="' + oMatch.id + '"></a></div><div class="col-md-2"><a class="get-shortlink btn btn-default btn-xs pull-right" data-toggle="modal" data-target="#modal-shortlink" role="button" data-match-slug="' + getLongestInArray(oMatch.slugs) + '"><i class="glyphicon glyphicon-link"></i> Shortlink</a><span class="matchlist-last-update pull-right"><span class="glyphicon glyphicon-time"></span> updated ' + moment.utc(oMatch.last_update).local().fromNow() + '</span>' + cDebugInfo + '</div></div></div>');
 
     var cContainer = '<div class="matchlist-worldlist">';
 
     for (var cWorldId in oMatch.worlds) {
         var oWorld = oMatch.worlds[cWorldId];
-        var nKD = parseInt(oWorld.kills) / parseInt(oWorld.deaths);
-        var cLabelClass = nKD >= 1 ? "success" : "danger";
+        var nKd = parseInt(oWorld.kills) / parseInt(oWorld.deaths);
+        var cLabelClass = nKd >= 1 ? "success" : (nKd.toFixed(2) == 1 ? "warning" : "danger");
         cContainer += '<div class="row"><div class="col-md-1">';
 
         cContainer += '<span title="Kills: ' + oWorld.kills + ' / Deaths: ' + oWorld.deaths + '" class="label label-' + cLabelClass + '">KD: ' + getKdr(oWorld.kills, oWorld.deaths) + '</span>';

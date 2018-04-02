@@ -4,6 +4,10 @@ body {
     background: #0d0d0d !important
 }
 
+a {
+    color: black;
+}
+
 :not(object):not(body)>embed,
 [style*="background:url"]:empty,
 [style*="background-image:url"]:empty,
@@ -17,6 +21,7 @@ video,
 i,
 svg,
 span.nightmode-switch,
+i.icon,
 .no-nightmode {
     filter: invert(100%) hue-rotate(180deg) !important;
     text-shadow: none !important;
@@ -32,7 +37,9 @@ span.nightmode-switch,
 .no-nightmode object,
 .no-nightmode svg image,
 .no-nightmode video,
-.no-nightmode i {
+.no-nightmode i,
+ul.nav-pills>li>a,
+i.icon {
     filter: none !important;
 }
 
@@ -53,10 +60,22 @@ span.label.label-success {
     outline: 1px #5cb85c solid;
 }
 
-span.nightmode-switch {
-    background-position: 24px 0px;
+i.icon.icon-nightmode {
+    background-position: -24px 0px;
 }
 
 div.modal-backdrop {
     background-color: #ddd !important;
+}
+
+ul.nav-pills>li.active,
+div.branding-container.active {
+    border-bottom: 3px solid #000 !important;
+}
+
+ul.nav-pills>li>a,
+ul.nav-pills>li.active>a,
+div.branding-container h3,
+div.branding-container.active h3 {
+    color: #000 !important;
 }

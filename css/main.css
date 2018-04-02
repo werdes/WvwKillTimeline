@@ -1,8 +1,22 @@
 /* Space out content a bit */
 
+html {
+  /*Fix scrollbar */
+  margin-left: calc(100vw - 100%);
+}
+
 body {
   padding-top: 20px;
   padding-bottom: 20px;
+}
+
+a {
+  color: #BA4947;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #ad6559;
 }
 
 /* Everything but the jumbotron gets side spacing for mobile first views */
@@ -220,6 +234,7 @@ span.matchlist-last-update {
   text-align: right;
   color: #777;
   font-size: .75em;
+  margin-top: 3px;
 }
 
 h2#match-title {
@@ -289,6 +304,30 @@ ul.nav-pills>li>a {
   min-height: 24px;
   padding: 0;
   line-height: 24px;
+  font-family: 'Roboto', sans-serif;
+  font-size: 1.12em;
+  font-weight: 300;
+}
+
+ul.nav-pills>li>a>i.icon {
+  margin-right: 2px;
+}
+
+ul.nav-pills>li.active,
+div.branding-container.active {
+  border-bottom: 3px solid #BA4947;
+}
+
+ul.nav-pills>li.active>a {
+  background-color: transparent !important;
+  font-weight: 400;
+  color: #BA4947 !important;
+}
+
+a.branding,
+a.branding:hover {
+  text-decoration: none;
+  font-family: 'Cinzel', serif;
 }
 
 div.header.disabled {
@@ -296,10 +335,6 @@ div.header.disabled {
 }
 
 span.nightmode-switch {
-  width: 24px;
-  height: 24px;
-  background-image: url(../img/iconcollection.png);
-  background-position: 0px 0px;
   cursor: pointer;
   padding: 0;
   display: block;
@@ -337,6 +372,11 @@ table#table-world-ranking td:nth-child(8) {
 div.row.kd-total {
   border-top: 1px #555 solid;
   padding-top: 3px;
+}
+
+.form-control:focus {
+  border-color: #ad6559;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px #ad6559;
 }
 
 .double-bounce1,
@@ -378,4 +418,30 @@ div.row.kd-total {
     transform: scale(1.0);
     -webkit-transform: scale(1.0);
   }
+}
+
+/* Icons */
+
+i.icon {
+  display: inline-block;
+  background-image: url(../img/iconcollection.png);
+  width: 24px;
+  height: 24px;
+  vertical-align: bottom;
+}
+
+i.icon.icon-nightmode {
+  background-position: 0px 0px;
+}
+
+i.icon.icon-ranking {
+  background-position: -120px 0px;
+}
+
+i.icon.icon-archive {
+  background-position: -72px 0px;
+}
+
+i.icon.icon-current {
+  background-position: -96px 0px;
 }

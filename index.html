@@ -9,8 +9,9 @@
   <meta name="author" content="werdes">
   <title>WvW Kills</title>
   <!-- Bootstrap core CSS -->
+  <link href="https://fonts.googleapis.com/css?family=Cinzel|Roboto:300,400,500,700" rel="stylesheet">
   <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css" />
-  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs-3.3.7/dt-1.10.15/fh-3.1.2/rg-1.0.0/datatables.min.css"
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs/dt-1.10.16/fh-3.1.3/rg-1.0.2/datatables.min.css"
   />
   <link rel="stylesheet" type="text/css" href="css/ie10-viewport-bug-workaround.min.css" />
   <link rel="stylesheet" type="text/css" href="css/main.min.css" />
@@ -27,16 +28,27 @@
     <!--Header Start-->
     <div class="header clearfix">
       <nav>
+        <div class="navbar-header">
+          <div class="branding-container">
+            <a class="text-muted branding" href="#/matches/current/">
+              <h3>WvW Kills</h3>
+            </a>
+          </div>
+        </div>
+
         <ul class="nav nav-pills pull-right">
           <li class="">
-            <a href="#/worldranking/" id="show-world-ranking">World Ranking</a>
+            <a href="#/worldranking/" id="show-world-ranking">
+              <i class="icon icon-ranking"></i> World Ranking</a>
           </li>
           <li class="">
-            <a href="#/matches/all/" id="show-all-matches">Show all matches</a>
+            <a href="#/matches/archive/" id="show-all-matches">
+              <i class="icon icon-archive"></i> Match Archive</a>
           </li>
           <li class="dropdown">
             <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"
-              id="current-matches-dropdown">Current matchups
+              id="current-matches-dropdown">
+              <i class="icon icon-current"></i> Current matchups
               <span class="caret"></span>
             </a>
             <ul class="dropdown-menu dropdown-menu-right" id="menu-current-matchups">
@@ -44,18 +56,17 @@
           </li>
           <li class="nightmode">
             <a href="javascript:void(0)" id="nightmode">
-              <span title="Night mode" class="nightmode-switch"></span>
+              <span title="Night mode" class="nightmode-switch">
+                <i class="icon icon-nightmode"></i>
+              </span>
             </a>
           </li>
-
         </ul>
       </nav>
       <!-- <h3 class="text-muted" id="headline">
         <a href="#/">WvW Kills</a>
       </h3> -->
-      <a class="text-muted" href="#/matches/current/">
-        <h3>WvW Kills</h3>
-      </a>
+
     </div>
     <!--Header End-->
 
@@ -132,7 +143,8 @@
     </div>
 
     <footer class="footer">
-      <p class="pull-left">&copy; 2017
+      <p class="pull-left">&copy; 2016 -
+        <span id="current-year"></span>
         <a href="http://www.werdes.net">Werdes</a>
       </p>
       <p class="pull-right">
