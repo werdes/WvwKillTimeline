@@ -19,6 +19,11 @@ a:hover {
   color: #ad6559;
 }
 
+h2 {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+}
+
 /* Everything but the jumbotron gets side spacing for mobile first views */
 
 .header,
@@ -173,15 +178,42 @@ div.matchlist-eyecatcher {
 div.matchlist-world-container {
   position: relative;
   top: 2px;
+  left: -22px;
+}
+
+div.matchlist-stat-container {
+  position: relative;
+  top: 3px;
+}
+
+div.matchlist-stat-container>div.progress {
+  margin-bottom: 0px !important;
+  max-height: 18px;
+  border-radius: .25em;
+}
+
+div.matchlist-stat-container>div.progress>div.progress-bar {
+  padding: 3px;
+  font-size: 8pt;
+  font-weight: 700;
+  line-height: 1;
 }
 
 div.matchlist-eyecatcher span.matchlist-region {
   font-size: 30pt;
   font-weight: bold;
-  color: #ddd;
+  opacity: .5;
   text-align: right;
   padding-right: 15px;
   display: block;
+}
+
+div.matchlist-eyecatcher span.matchlist-region.region-eu {
+  color: #003399;
+}
+
+div.matchlist-eyecatcher span.matchlist-region.region-na {
+  color: #B22234;
 }
 
 div.matchlist-eyecatcher span.matchlist-tier {
@@ -194,8 +226,22 @@ div.matchlist-eyecatcher span.matchlist-tier {
   display: block;
 }
 
-div.list-group-item {
+div#matchlist-container>div.list-group-item {
   padding: 2px 15px 10px 15px;
+}
+
+div#matchlist-container>div.list-group-item:hover {
+  padding: 2px 11px 10px 11px;
+}
+
+div#matchlist-container>div.list-group-item.eu:hover {
+  border-right: rgba(0, 51, 153, .6) 5px solid;
+  border-left: rgba(0, 51, 153, .6) 5px solid;
+}
+
+div#matchlist-container>div.list-group-item.na:hover {
+  border-right: rgba(178, 34, 52, .6) 5px solid;
+  border-left: rgba(178, 34, 52, .6) 5px solid;
 }
 
 div#matchlist {
@@ -208,8 +254,11 @@ div#matchlist-container div.list-group-item:hover {
   cursor: pointer;
 }
 
-div#matchlist-container div.list-group-item:hover div.matchlist-eyecatcher span.matchlist-tier,
 div#matchlist-container div.list-group-item:hover div.matchlist-eyecatcher span.matchlist-region {
+  opacity: .6;
+}
+
+div#matchlist-container div.list-group-item:hover div.matchlist-eyecatcher span.matchlist-tier {
   color: #ccc;
 }
 
@@ -232,9 +281,9 @@ a.match-container {
 
 span.matchlist-last-update {
   text-align: right;
-  color: #777;
+  color: #888;
   font-size: .75em;
-  margin-top: 3px;
+  margin-top: 12px;
 }
 
 h2#match-title {
@@ -274,6 +323,8 @@ div.list-group-item a.get-shortlink {
 div.world-container h4 {
   display: inline;
   margin-right: 10px;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
 }
 
 span.copy-statistics {
@@ -374,9 +425,69 @@ div.row.kd-total {
   padding-top: 3px;
 }
 
+div#copy-timeslot {
+  position: absolute;
+}
+
+div#copy-timeslot li {
+  display: block;
+  margin-bottom: 2px;
+  height: 22px !important;
+}
+
+div#copy-timeslot li>a {
+  width: 100%;
+  border-radius: 0px;
+  text-align: left;
+}
+
+span.context-header {
+  color: #333;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  padding: 1px 5px;
+  width: 100%;
+  display: block;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 700;
+  text-align: center;
+}
+
 .form-control:focus {
   border-color: #ad6559;
   box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px #ad6559;
+}
+
+#loading-container {
+  min-height: 250px;
+}
+
+#loading-container>img {
+  width: 150px;
+  display: block;
+  margin: 50px auto;
+  animation: bounce .25s infinite alternate;
+  -webkit-animation: bounce .25s infinite alternate;
+  opacity: .2;
+}
+
+@keyframes bounce {
+  from {
+    transform: translateY(0px);
+  }
+  to {
+    transform: translateY(-15px);
+  }
+}
+
+@-webkit-keyframes bounce {
+  from {
+    transform: translateY(0px);
+  }
+  to {
+    transform: translateY(-15px);
+  }
 }
 
 .double-bounce1,

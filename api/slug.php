@@ -10,10 +10,21 @@ if (isset($_SLUG) && !empty($_SLUG)) {
         $cSqlStatement = "SELECT * FROM match_slug WHERE match_slug.slug = '" . $oConnection->real_escape_string($_SLUG) . "';";
 
         $oSqlQuery = $oConnection->query($cSqlStatement);
+        if ($oSqlQuery->num_rows > 0) {
+            $oItem = $oSqlQuery->fetch_object();
+            echo json_encode($oItem);
+        } else {
+            $cSlug = $oConnection->real_escape_string($_SLUG);
+            // $cSlug = str_replace("-", " ", $cSlug);
 
-        $oItem = $oSqlQuery->fetch_object();
+            $cSqlStatementCurrentMatch = "select match_slug.* from match_slug inner join `match` on `match`.id = match_slug.match_id inner join match_worlds on match_worlds.match_id = `match`.id where match_slug.slug like '%" . $cSlug . "%' and UTC_TIMESTAMP between `match`.start_time and `match`.end_time";
 
-        echo json_encode($oItem);
+            $oSqlQueryCurrentMatch = $oConnection->query($cSqlStatementCurrentMatch);
+
+            $oItem = $oSqlQueryCurrentMatch->fetch_object();
+            echo json_encode($oItem);
+
+        }
     }
 
 

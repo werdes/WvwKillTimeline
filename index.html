@@ -72,12 +72,13 @@
 
     <!--Loading Spinner Start-->
     <div id="loading-container" class="no-nightmode">
-      <div class="spinner">
+      <!-- <div class="spinner">
         <div class="double-bounce1"></div>
         <div class="double-bounce2"></div>
-      </div>
+      </div> -->
+      <!--Loading Spinner End-->
+      <img src="img/knight.png" />
     </div>
-    <!--Loading Spinner End-->
 
     <div class="container" id="message-container">
     </div>
@@ -172,12 +173,44 @@
       </div>
     </div>
   </div>
+
+  <div id="copy-timeslot" class="hidden" role="tooltip">
+    <ul>
+      <li>
+        <span class="context-header" id="copy-timeslot-header"></span>
+      </li>
+      <li>
+        <a id="copy-timeslot-green" class="copy-timeslot btn btn-xs btn-success">
+          <span class="glyphicon glyphicon-copy"></span> Copy for
+          <span id="copy-timeslot-green-name"></span>
+        </a>
+      </li>
+      <li>
+        <a id="copy-timeslot-blue" class="copy-timeslot btn btn-xs btn-primary">
+          <span class="glyphicon glyphicon-copy"></span> Copy for
+          <span id="copy-timeslot-blue-name"></span>
+        </a>
+      </li>
+      <li>
+        <a id="copy-timeslot-red" class="copy-timeslot btn btn-xs btn-danger">
+          <span class="glyphicon glyphicon-copy"></span> Copy for
+          <span id="copy-timeslot-red-name"></span>
+        </a>
+      </li>
+      <li>
+        <a id="copy-timeslot-cancel" class="btn btn-xs btn-default">
+          <span class="glyphicon glyphicon-remove"></span> Cancel</a>
+      </li>
+    </ul>
+  </div>
+
   <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
   <script type="text/javascript" src="https://cdn.datatables.net/v/bs/dt-1.10.15/fh-3.1.2/datatables.min.js"></script>
   <script type="text/javascript" src="js/sammy.min.js"></script>
   <script type="text/javascript" src="js/jquery.cookie.min.js"></script>
   <script type="text/javascript" src="js/highstock.min.js"></script>
   <script type="text/javascript" src="js/highcharts.zeroalign.min.js"></script>
+  <script type="text/javascript" src="js/highcharts.customEvents.min.js"></script>
   <script type="text/javascript" src="js/bootstrap.min.js"></script>
   <script type="text/javascript" src="js/moment.min.js"></script>
   <script type="text/javascript" src="js/clipboard.min.js"></script>

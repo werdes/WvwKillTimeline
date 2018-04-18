@@ -4,6 +4,8 @@ var m_oDataTableRanking = null;
 var m_bFlattening = true;
 
 var _STATISTICS_VIEW = null;
+var _CURSOR = null;
+var _WORLDS = null;
 
 $(function () {
     checkNightmode();
@@ -158,10 +160,17 @@ function getWorlds(oMatch) {
     aWorlds['green'] = null;
     aWorlds['blue'] = null;
 
+    _WORLDS = {};
+
     for (var cSeriesKey in oMatch.series) {
         var oSeries = oMatch.series[cSeriesKey];
         aWorlds[oSeries.color] = oSeries.world_name;
+        _WORLDS[oSeries.color] = {
+            name: oSeries.world_name,
+            id: oSeries.world_id
+        };
     };
+
     return aWorlds;
 }
 
@@ -282,7 +291,7 @@ function setAllMatchlist() {
             for (var cMatchId in oData.responseJSON) {
 
                 var oMatch = oData.responseJSON[cMatchId];
-                var cCurrStartDate = moment(oMatch.start).utc().format('YYYY.MM.DD');
+                var cCurrStartDate = moment.utc(oMatch.start).format('YYYY.MM.DD');
                 if (cCurrStartDate != cLastStartDate) {
                     $(cContainerId).append('<h2>' + moment.utc(oMatch.start).local().format('YYYY.MM.DD') + ' - ' + moment.utc(oMatch.end).local().format('YYYY.MM.DD') + '</h2></div>');
                     cLastStartDate = cCurrStartDate;
@@ -382,20 +391,28 @@ function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
 
     var cUrl = '#/matches/' + getLongestInArray(oMatch.slugs) + "/";
 
-    $(cContainerId).append('<div id="' + cMatchId + '" class="list-group-item"><div class="row"><div class="col-md-1"><div class="matchlist-eyecatcher"><span class="matchlist-region">' + cRegion + '</span><span class="matchlist-tier">Tier ' + cTier + '</span></div></div><div class="col-md-9"><a class="match-container" data-match-id="' + oMatch.id + '"></a></div><div class="col-md-2"><a class="get-shortlink btn btn-default btn-xs pull-right" data-toggle="modal" data-target="#modal-shortlink" role="button" data-match-slug="' + getLongestInArray(oMatch.slugs) + '"><i class="glyphicon glyphicon-link"></i> Shortlink</a><span class="matchlist-last-update pull-right"><span class="glyphicon glyphicon-time"></span> updated ' + moment.utc(oMatch.last_update).local().fromNow() + '</span>' + cDebugInfo + '</div></div></div>');
+    $(cContainerId).append('<div id="' + cMatchId + '" class="list-group-item ' + cRegion.toLowerCase() + '"><div class="row"><div class="col-md-1"><div class="matchlist-eyecatcher"><span class="matchlist-region region-' + cRegion.toLowerCase() + '">' + cRegion + '</span><span class="matchlist-tier">Tier ' + cTier + '</span></div></div><div class="col-md-9"><a class="match-container" data-match-id="' + oMatch.id + '"></a></div><div class="col-md-2"><span class="matchlist-last-update pull-right" title="' + moment.utc(oMatch.last_update).local().format("HH:mm:ss") +
+        '">updated ' + moment.utc(oMatch.last_update).local().fromNow() + '</span>' + cDebugInfo + '</div></div></div>');
 
     var cContainer = '<div class="matchlist-worldlist">';
+    var cMatchStats = '';
 
-    for (var cWorldId in oMatch.worlds) {
-        var oWorld = oMatch.worlds[cWorldId];
+    var aWorlds = new Array();
+    aWorlds.push(oMatch.worlds.green);
+    aWorlds.push(oMatch.worlds.blue);
+    aWorlds.push(oMatch.worlds.red);
+
+    for (var cWorldId in aWorlds) {
+        var oWorld = aWorlds[cWorldId];
         var nKd = parseInt(oWorld.kills) / parseInt(oWorld.deaths);
         var cLabelClass = nKd >= 1 ? "success" : (nKd.toFixed(2) == 1 ? "warning" : "danger");
-        cContainer += '<div class="row"><div class="col-md-1">';
+        cContainer += '<div class="row"><div class="col-md-1 matchlist-world-kd">';
 
         cContainer += '<span title="Kills: ' + oWorld.kills + ' / Deaths: ' + oWorld.deaths + '" class="label label-' + cLabelClass + '">KD: ' + getKdr(oWorld.kills, oWorld.deaths) + '</span>';
 
+        var oWidths = getWidths(parseInt(oWorld.kills), parseInt(oWorld.deaths));
 
-        cContainer += '</div><div class="col-md-11 matchlist-world-container"><b><i class="famfamfam-flag-' + getFlagShort(oWorld.id) + '"></i> ' + oWorld.name + '</b>';
+        cContainer += '</div><div class="col-md-3 matchlist-stat-container"><div class="progress"><div class="progress-bar kills total ' + oWorld.world_id + ' no-nightmode" title="kills" role="progressbar" style="width: ' + oWidths.kills + '; background-color: ' + shadeColor(colorNameToHex(oWorld.color), 0.3) + ';"  >' + oWorld.kills + '</div><div class="progress-bar ' + oWorld.world_id + ' total deaths no-nightmode" style="width: ' + oWidths.deaths + '; background-color: ' + shadeColor(colorNameToHex(oWorld.color), -0.3) + ';" title="deaths">' + oWorld.deaths + '</div></div></div><div class="col-md-8 matchlist-world-container"><b><i class="famfamfam-flag-' + getFlagShort(oWorld.id) + '"></i> ' + oWorld.name + '</b>';
 
         aSearchQuery.push(oWorld.name);
 
@@ -406,10 +423,12 @@ function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
                 aSearchQuery.push(oWorld.additional_worlds[cAdditionalWorldId].name);
             }
         }
+
         cContainer += '</div></div>';
     }
     cContainer += "</a></div>";
     $("#" + cMatchId + ' a.match-container').append(cContainer);
+    $("#" + cMatchId + ' div.matchlist-stat-container').append(cMatchStats);
 
     $('#' + cMatchId).attr('data-search-query', aSearchQuery.join('#'));
 
@@ -534,6 +553,7 @@ function setMatch(cMatchId, oMatchlistMatch) {
             setStatistics(-1);
 
             m_oHighchartsKills.redraw();
+
             setLoading(false);
 
             setView(ENUM_VIEW.MATCH);
@@ -647,6 +667,7 @@ function setSeries(oSeries, aWorlds, aMaps, i, cDeathsKills) {
     m_oHighchartsKills.addSeries({
         name: '[' + cDeathsKills + '] ' + oSeries.world_name + ' on ' + aMaps[oSeries.map_id],
         yAxis: bDeaths ? 0 : 1,
+        animation: false,
         type: 'area',
         step: 'center',
         color: getMapChartColor(oSeries.color, oSeries.map_id, bDeaths)
@@ -832,6 +853,44 @@ function getClipboardWorld(nWorldId, oMatch) {
     return cWorldOverall + aMaps.join(' | ') + ' - updated ' + moment.utc(oMatch.last_update).local().fromNow();
 }
 
+function getClipboardWorldAndTimeslot(nWorldId, nTimeslotId) {
+
+    var oWorld = _STATISTICS_VIEW.timeslots[nTimeslotId].worlds[nWorldId];
+    var oTimeslot = _STATISTICS_VIEW.timeslots[nTimeslotId];
+
+    var nFullDeaths = 0;
+    var nFullKills = 0;
+    var aMaps = new Array();
+    var cWorldName = oWorld.world_name;
+    var aWorldColors = getMapColors();
+
+    for (var nMapId in oWorld.maps) {
+        var oMap = oWorld.maps[nMapId];
+        var nKills = parseInt(oMap.kills);
+        var nDeaths = parseInt(oMap.deaths);
+        var cWorld = oWorld.world_name;
+        var cMap = oMap.map_id == "38" ? "EB" : "BL";
+        var cColor = aWorldColors[oMap.map_id];
+
+        nFullDeaths += nDeaths;
+        nFullKills += nKills;
+
+        var cOutput = getKdr(nKills, nDeaths) + 'KD (' + nKills + '/' + nDeaths + ') @ ';
+        if (cColor.indexOf('#') == -1) {
+            cOutput += cColor.toProperCase() + " ";
+        }
+        cOutput += cMap;
+
+        aMaps.push(cOutput);
+    }
+
+
+    var cWorldOverall = cWorldName + "(" + moment.utc(oTimeslot.timeslot_start).local().format('HH:mm') + '-' + moment.utc(oTimeslot.timeslot_end).local().format('HH:mm') + "): " + getKdr(nFullKills, nFullDeaths) + ' k/d (' + nFullKills + '/' + nFullDeaths + ') | ';
+
+
+    return cWorldOverall + aMaps.join(' | ');
+}
+
 //Resets all Chart series
 function resetView() {
     if (m_oHighchartsKills != undefined &&
@@ -932,11 +991,22 @@ function getChartOptions() {
             }
         ],
         plotOptions: {
+            series: {
+                animation: false
+            },
             area: {
                 stacking: 'normal',
+                animation: false,
                 marker: {
                     // width: 10,
                     // height: 10
+                },
+                point: {
+                    events: {
+                        click: function () {
+                            setCopyModal(this.timeslot_id);
+                        }
+                    }
                 }
             }
         },
@@ -944,6 +1014,47 @@ function getChartOptions() {
     }
     return oChartOptions;
 }
+
+function setCopyModal(cTimeslotId) {
+    $('#copy-timeslot-green').attr('data-timeslot-id', cTimeslotId);
+    $('#copy-timeslot-blue').attr('data-timeslot-id', cTimeslotId);
+    $('#copy-timeslot-red').attr('data-timeslot-id', cTimeslotId);
+
+    $('#copy-timeslot-green-name').text(_WORLDS['green'].name);
+    $('#copy-timeslot-green').attr('data-world-id', _WORLDS['green'].id);
+
+    $('#copy-timeslot-blue-name').text(_WORLDS['blue'].name);
+    $('copy-timeslot-blue').attr('data-world-id', _WORLDS['blue'].id);
+
+    $('#copy-timeslot-red-name').text(_WORLDS['red'].name);
+    $('#copy-timeslot-red').attr('data-world-id', _WORLDS['red'].id);
+
+    $('#copy-timeslot').css('top', _CURSOR.y).css('left', _CURSOR.x - 30);
+
+    var oTimeslot = _STATISTICS_VIEW.timeslots[cTimeslotId];
+    $('#copy-timeslot-header').html(moment.utc(oTimeslot.timeslot_start).local().format('HH:mm') + '-' + moment.utc(oTimeslot.timeslot_end).local().format('HH:mm'));
+
+    new Clipboard('#copy-timeslot-red');
+    new Clipboard('#copy-timeslot-green');
+    new Clipboard('#copy-timeslot-blue');
+    $('#copy-timeslot').removeClass('hidden');
+}
+
+$('.copy-timeslot').click(function () {
+    var nTimeslotId = $(this).attr('data-timeslot-id');
+    var nWorldId = $(this).attr('data-world-id');
+    $(this).attr('data-clipboard-text', getClipboardWorldAndTimeslot(nWorldId, nTimeslotId));
+    $('#copy-timeslot').addClass('hidden');
+});
+
+$('#copy-timeslot-cancel').click(function () {
+    $('#copy-timeslot').addClass('hidden');
+    new Clipboard(this);
+});
+
+$('body').click(function () {
+    $('#copy-timeslot').addClass('hidden');
+});
 
 function newGuid() {
     return (S4() + S4() + "-" + S4() + "-4" + S4().substr(0, 3) + "-" + S4() + "-" + S4() + S4() + S4()).toLowerCase();
@@ -1034,6 +1145,13 @@ $('#main-chart-container').mouseleave(function () {
     setStatistics(-1);
 });
 
+$(document).on("mousemove", function (event) {
+    _CURSOR = {
+        x: event.pageX,
+        y: event.pageY
+    };
+});
+
 function getWidths(nKills, nDeaths) {
     var oRetVal = null;
 
@@ -1102,6 +1220,12 @@ function getLongestInArray(aArray) {
     return aArray.sort(function (a, b) {
         return b.length - a.length;
     })[0];
+}
+
+function cmpColor(a, b) {
+    if (a.color == "red") return 3;
+    if (a.color == "blue") return 2;
+    return 1;
 }
 
 String.prototype.toProperCase = function () {
