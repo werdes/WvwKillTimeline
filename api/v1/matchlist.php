@@ -1,5 +1,5 @@
 <?php
-require_once("../class/matchlist_entry.class.php");
+require_once("class/matchlist_entry.class.php");
 
 define("CACHE_DIR", "../cache/");
 define("CACHE_DURATION", 60);

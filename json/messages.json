@@ -1,0 +1,5 @@
+[{
+    "title": "Official API issues - 2017.07.01 - ETA 🔥",
+    "message": "There are ongoing issues with the official API. This results in no kills being tracked for any matches. Once the API is back up, the missing kills will be tracked and distributed among the missing timeslots.",
+    "level": "danger"
+}]

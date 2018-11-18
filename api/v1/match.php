@@ -1,8 +1,8 @@
 <?php
 
-require_once("../class/series.class.php");
-require_once("../class/series_item.class.php");
-require_once("../class/match.class.php");
+require_once("class/series.class.php");
+require_once("class/series_item.class.php");
+require_once("class/match.class.php");
 
 
 define("THRESHOLD_FLATTENING", 17);
@@ -81,8 +81,8 @@ if (isset($_ID) && !empty($_ID) && isset($_FLATTEN)) {
                 $oSeriesItem = new series_item();
                 $oSeriesItem->timeslot_start = $oItem->timeslot_start;
                 $oSeriesItem->timeslot_end = $oItem->timeslot_end;
-                $oSeriesItem->kills = $oItem->kills;
-                $oSeriesItem->deaths = $oItem->deaths;
+                $oSeriesItem->kills = intval($oItem->kills) >= 0 ? intval($oItem->kills) : 0;
+                $oSeriesItem->deaths = intval($oItem->deaths) >= 0 ? intval($oItem->deaths) : 0;
                 $oSeriesItem->error = false;
                 $oSeriesItem->timeslot_id = $oItem->timeslot_id;
 
@@ -92,6 +92,8 @@ if (isset($_ID) && !empty($_ID) && isset($_FLATTEN)) {
         }
 
         $nMicrotimeAfterLoop = microtime(true);
+
+
 
             //Flattening spikes
         if (FLATTEN_STATISTICS && $_FLATTEN) {

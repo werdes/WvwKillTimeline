@@ -1,8 +1,8 @@
 <?php
 
-require_once("../class/world.class.php");
-require_once("../class/link.class.php");
-require_once("../class/link_partner.class.php");
+require_once("class/world.class.php");
+require_once("class/link.class.php");
+require_once("class/link_partner.class.php");
 
 
 define("CACHE_DIR", "../cache/");

@@ -43,7 +43,8 @@ i.icon {
     filter: none !important;
 }
 
-a.btn.no-nightmode {
+a.btn.no-nightmode,
+button.btn.no-nightmode {
     color: black;
 }
 

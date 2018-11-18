@@ -8,6 +8,7 @@ html {
 body {
   padding-top: 20px;
   padding-bottom: 20px;
+
 }
 
 a {
@@ -98,7 +99,8 @@ h2 {
 
 /* Responsive: Portrait tablets and up */
 
-@media screen and (min-width: 1000px) {
+@media screen and (min-width: 1023px) {
+
   /* Remove the padding we set earlier */
   .header,
   .marketing,
@@ -106,14 +108,17 @@ h2 {
     padding-right: 0;
     padding-left: 0;
   }
+
   /* Space out the masthead */
   .header {
     margin-bottom: 30px;
   }
+
   /* Remove the bottom border on the jumbotron for visual effect */
   .jumbotron {
     border-bottom: 0;
   }
+
   div#chart-container,
   div#main-chart-container {
     width: 970px;
@@ -125,6 +130,27 @@ div#main-chart-container {
   height: 550px;
   padding: 0 2px 0 0 !important;
   position: relative;
+}
+
+div#chart-container>div.information-addon {
+  width: 200px;
+  position: absolute;
+  right: -211px;
+}
+
+div#chart-container>div.information-addon>div.inner {
+  padding: 5px 8px;
+}
+
+
+div#chart-container>div.information-addon>div.inner>ul {
+  margin-top: 2px;
+}
+
+div#chart-container>div.information-addon>div.inner>ul>li {
+  display: block;
+  position: relative;
+  left: -25px;
 }
 
 div#matchlist-container {
@@ -304,7 +330,8 @@ div.world-container>h4 {
   font-weight: bold;
 }
 
-a.btn.reload-chart {
+a.btn.reload-chart,
+div.grp-options {
   margin-right: 10px;
 }
 
@@ -383,6 +410,21 @@ a.branding:hover {
 
 div.header.disabled {
   pointer-events: none;
+}
+
+button.navbar-toggle {
+  position: relative;
+  top: -5px;
+}
+
+button.navbar-toggle span.icon-bar {
+  background-color: #777;
+}
+
+button.navbar-toggle:hover span.icon-bar,
+button.navbar-toggle:focus span.icon-bar,
+button.navbar-toggle:active span.icon-bar {
+  background-color: #BA4947;
 }
 
 span.nightmode-switch {
@@ -476,6 +518,7 @@ span.context-header {
   from {
     transform: translateY(0px);
   }
+
   to {
     transform: translateY(-15px);
   }
@@ -485,6 +528,7 @@ span.context-header {
   from {
     transform: translateY(0px);
   }
+
   to {
     transform: translateY(-15px);
   }
@@ -510,21 +554,25 @@ span.context-header {
 }
 
 @-webkit-keyframes sk-bounce {
+
   0%,
   100% {
     -webkit-transform: scale(0.0)
   }
+
   50% {
     -webkit-transform: scale(1.0)
   }
 }
 
 @keyframes sk-bounce {
+
   0%,
   100% {
     transform: scale(0.0);
     -webkit-transform: scale(0.0);
   }
+
   50% {
     transform: scale(1.0);
     -webkit-transform: scale(1.0);
@@ -555,4 +603,82 @@ i.icon.icon-archive {
 
 i.icon.icon-current {
   background-position: -96px 0px;
+}
+
+@media screen and (max-width: 1023px) {
+  .header {
+    padding-bottom: 25px !important;
+    border-bottom-width: 0px;
+  }
+
+  .content {
+    padding: 0 15px !important;
+  }
+
+  .matchlist-search {
+    width: 100%;
+  }
+
+
+  .matchlist-tier,
+  .matchlist-region {
+    display: inline !important;
+    font-size: 22pt !important;
+  }
+
+  .matchlist-stat-container {
+    display: none;
+  }
+
+  .matchlist-world-kd {
+    float: right;
+  }
+
+
+  div.matchlist-world-container {
+    left: -9px !important;
+  }
+
+  div#chart-container {
+    width: auto !important;
+  }
+
+  div.information-addon {
+    display: none;
+  }
+
+  .get-shortlink,
+  .reload-chart {
+    padding: 2px 3px;
+    font-size: 10pt;
+    margin: 0 3px 10px 3px !important;
+  }
+
+  .grp-options>button {
+    padding: 2px 3px;
+    font-size: 10pt;
+  }
+
+  div.grp-options {
+    margin: 0 3px 10px 3px !important;
+  }
+
+  .col-world-name {
+    float: left;
+    width: 20%;
+  }
+
+  .col-world-kills {
+    float: right;
+    width: 60%;
+  }
+
+  .col-kdr {
+    padding: 0px;
+    float: right;
+  }
+
+  .world-container {
+    margin-bottom: 10px;
+  }
 }

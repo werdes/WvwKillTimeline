@@ -5,9 +5,9 @@ header('Content-Type: application/json');
 
 require_once("../inc/config.inc.php");
 require_once("../class/alto_router.class.php");
-require_once("../class/series.class.php");
-require_once("../class/series_item.class.php");
-require_once("../class/match.class.php");
+// require_once("../class/series.class.php");
+// require_once("../class/series_item.class.php");
+// require_once("../class/match.class.php");
 
 
 require_once("../inc/api_routes.inc.php");

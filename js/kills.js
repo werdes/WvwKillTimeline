@@ -6,11 +6,24 @@ var m_bFlattening = true;
 var _STATISTICS_VIEW = null;
 var _CURSOR = null;
 var _WORLDS = null;
+var _API_BASE = "http://localhost:56965/api/";
+// var _API_BASE = "api/";
+var _CURRENT_MATCH_ID;
+var _CURRENT_MATCH;
+var _SETTINGS = {
+    "flattening": true,
+    "smoothing": false
+}
 
 $(function () {
+    setView(ENUM_VIEW.NONE);
+
     checkNightmode();
     new Clipboard('#copy-shortlink');
     setCurrentMatchlistMainMenu();
+    loadMessages();
+    checkTips();
+    loadSettings();
 
     var oApp = $.sammy(function () {
         this.get('#/matches/current/', function (context) {
@@ -51,6 +64,43 @@ $(function () {
     $('#current-year').text(moment().format("YYYY"));
 });
 
+function loadSettings() {
+
+    var cookie = $.cookie('settings');
+    if (cookie == undefined || cookie == null) {
+
+        setSettingsCookie();
+        cookie = $.cookie('settings');;
+    }
+
+    _SETTINGS = JSON.parse(cookie);
+
+    $('.grp-options li.checkable > a').each(function () {
+        $(this).find(".glyphicon").css("opacity", _SETTINGS[$(this).attr("data-target")] ? 1 : 0);
+    });
+}
+
+function setSettingsCookie() {
+    $.cookie('settings', JSON.stringify(_SETTINGS), {
+        expires: 365
+    });
+}
+
+function loadMessages() {
+    $.ajax({
+        url: "json/messages.json?" + $.now(),
+        dataType: "json",
+        complete: function (oData) {
+            if (oData != null && oData.responseJSON != null) {
+                for (var nMessage in oData.responseJSON) {
+                    var oMessage = oData.responseJSON[nMessage];
+                    setMessage('<strong>' + oMessage.title + '</strong><br />' + oMessage.message, oMessage.level);
+                }
+            }
+        }
+    });
+}
+
 function handlePageSwitch(targetUri) {
     targetUri = '#' + targetUri.split('#')[1];
     $('div.branding-container, ul.nav-pills>li').removeClass('active');
@@ -82,6 +132,17 @@ function checkNightmode() {
         $('head link[rel="stylesheet"][href="css/nightmode.min.css"]').remove();
     } else {
         $('head').append('<link rel="stylesheet" type="text/css" href="css/nightmode.min.css">');
+    }
+}
+
+function checkTips() {
+    checkCopyStatsTip();
+}
+
+function checkCopyStatsTip() {
+    var oCookie = $.cookie('tip_copystats');
+    if (oCookie != undefined && oCookie != null) {
+        $('#information-addon-copystats').addClass("hidden");
     }
 }
 
@@ -167,7 +228,7 @@ function getWorlds(oMatch) {
         aWorlds[oSeries.color] = oSeries.world_name;
         _WORLDS[oSeries.color] = {
             name: oSeries.world_name,
-            id: oSeries.world_id
+            id: oSeries.world_arenanet_id
         };
     };
 
@@ -176,7 +237,7 @@ function getWorlds(oMatch) {
 
 function resolveSlug(cSlug, callback) {
     $.ajax({
-        url: "api/slug/" + cSlug + "?" + $.now(),
+        url: _API_BASE + "slug/" + cSlug + "?ts=" + $.now(),
         caching: false,
         dataType: "json",
         complete: function (oData) {
@@ -197,31 +258,14 @@ function setSpecificMatch(cRequestedMatchId) {
     setLoading(true);
     setView(ENUM_VIEW.NONE);
 
-    $.ajax({
-        url: "api/matchlist/single/" + cRequestedMatchId + "?" + $.now(),
-        caching: false,
-        dataType: "json",
-        complete: function (oData) {
-            for (var cCurrentMatchId in oData.responseJSON) {
-                var oMatch = oData.responseJSON[cCurrentMatchId];
-                if (oMatch.id == cRequestedMatchId) {
-                    setMatch(oMatch.id, oMatch);
-                    break;
-                }
-            }
-        },
-        error: function (oXhr, cStatus, cError) {
-            setMessage('<b>' + cStatus + '</b><br />' + cError, 'danger');
-            setView(ENUM_VIEW.MATCHLIST);
-        }
-    })
+    setMatch(cRequestedMatchId);
 }
 
 function setWorldRanking() {
     setView(ENUM_VIEW.NONE);
     setLoading(true);
     $.ajax({
-        url: "api/worldranking?" + $.now(),
+        url: _API_BASE + "worldranking?ts=" + $.now(),
         dataType: "json",
         complete: function (oData) {
             m_oDataTableRanking = $('#table-world-ranking').DataTable({
@@ -281,7 +325,7 @@ function setAllMatchlist() {
     setView(ENUM_VIEW.NONE);
 
     $.ajax({
-        url: "api/matchlist/all?" + $.now(),
+        url: _API_BASE + "matchlist/all?ts=" + $.now(),
         dataType: "json",
         complete: function (oData) {
 
@@ -312,7 +356,7 @@ function setAllMatchlist() {
 function setCurrentMatchlistMainMenu() {
     var cMenuContainerId = '#menu-current-matchups';
     $.ajax({
-        url: "api/matchlist/current?" + $.now(),
+        url: _API_BASE + "matchlist/current?ts=" + $.now(),
         dataType: "json",
         complete: function (oData) {
 
@@ -331,7 +375,7 @@ function setCurrentMatchlistMainMenu() {
                     if (i > 0) {
                         cMenuContainer += " - ";
                     }
-                    cMenuContainer += '<i class="famfamfam-flag-' + getFlagShort(oWorld.id) + '"></i> ';
+                    cMenuContainer += '<i class="famfamfam-flag-' + getFlagShort(oWorld.arenanet_id) + '"></i> ';
                     cMenuContainer += oWorld.name;
 
                     i++;
@@ -357,7 +401,7 @@ function setCurrentMatchlist() {
     setLoading(true);
 
     $.ajax({
-        url: "api/matchlist/current?" + $.now(),
+        url: _API_BASE + "matchlist/current?ts=" + $.now(),
         dataType: "json",
         complete: function (oData) {
             setView(ENUM_VIEW.NONE);
@@ -412,7 +456,7 @@ function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
 
         var oWidths = getWidths(parseInt(oWorld.kills), parseInt(oWorld.deaths));
 
-        cContainer += '</div><div class="col-md-3 matchlist-stat-container"><div class="progress"><div class="progress-bar kills total ' + oWorld.world_id + ' no-nightmode" title="kills" role="progressbar" style="width: ' + oWidths.kills + '; background-color: ' + shadeColor(colorNameToHex(oWorld.color), 0.3) + ';"  >' + oWorld.kills + '</div><div class="progress-bar ' + oWorld.world_id + ' total deaths no-nightmode" style="width: ' + oWidths.deaths + '; background-color: ' + shadeColor(colorNameToHex(oWorld.color), -0.3) + ';" title="deaths">' + oWorld.deaths + '</div></div></div><div class="col-md-8 matchlist-world-container"><b><i class="famfamfam-flag-' + getFlagShort(oWorld.id) + '"></i> ' + oWorld.name + '</b>';
+        cContainer += '</div><div class="col-md-3 matchlist-stat-container"><div class="progress"><div class="progress-bar kills total ' + oWorld.world_id + ' no-nightmode" title="kills" role="progressbar" style="width: ' + oWidths.kills + '; background-color: ' + shadeColor(colorNameToHex(oWorld.color), 0.3) + ';"  >' + oWorld.kills + '</div><div class="progress-bar ' + oWorld.world_id + ' total deaths no-nightmode" style="width: ' + oWidths.deaths + '; background-color: ' + shadeColor(colorNameToHex(oWorld.color), -0.3) + ';" title="deaths">' + oWorld.deaths + '</div></div></div><div class="col-md-8 matchlist-world-container"><b><i class="famfamfam-flag-' + getFlagShort(oWorld.arenanet_id) + '"></i> ' + oWorld.name + '</b>';
 
         aSearchQuery.push(oWorld.name);
 
@@ -446,21 +490,34 @@ $('#modal-shortlink').on('shown.bs.modal', function (event) {
     $('#shortlink-textbox').select();
 })
 
+$('.checkable > a').click(function () {
+    var target = $(this).attr("data-target");
+    var value = !($(this).attr("data-value") == 'true');
 
-function setMatch(cMatchId, oMatchlistMatch) {
+    _SETTINGS[target] = value;
+    $(this).find('.glyphicon').css('opacity', value ? 1 : 0);
+
+    $(this).attr("data-value", value);
+    setSettingsCookie();
+    setSpecificMatch(_CURRENT_MATCH_ID);
+});
+
+
+function setMatch(cMatchId) {
 
     setView(ENUM_VIEW.NONE);
     setLoading(true);
     resetView();
 
     m_oHighchartsKills = new Highcharts.stockChart(getChartOptions());
-    $('#disable-flattening').removeClass('hidden');
-    $('#enable-flattening').removeClass('hidden');
 
-    var cFlatteningOption = m_bFlattening ? "flattened" : "unaltered";
+    var cFlatteningOption =
+        _SETTINGS["flattening"] ? "flattened" : "unaltered";
+    var cSmoothingOption =
+        _SETTINGS["smoothing"] ? "smoothed" : "unaltered";
 
     $.ajax({
-        url: "api/match/" + cMatchId + "/" + cFlatteningOption + "?" + $.now(),
+        url: _API_BASE + "match/" + cMatchId + "/" + cFlatteningOption + "/" + cSmoothingOption + "?ts=" + $.now(),
         dataType: "json",
         complete: function (oData) {
             var oMatch = oData.responseJSON;
@@ -470,9 +527,11 @@ function setMatch(cMatchId, oMatchlistMatch) {
             var nKillsMax = 0;
             var nDeathsMin = 0;
 
-            var cTier = oMatchlistMatch.arenanet_id.split('-')[1];
-            var cRegion = oMatchlistMatch.arenanet_id.split('-')[0] == "1" ? "NA" : "EU";
-            var cLongestSlug = getLongestInArray(oMatchlistMatch.slugs);
+            _CURRENT_MATCH = oMatch;
+
+            var cTier = oMatch.match_arenanet_id.split('-')[1];
+            var cRegion = oMatch.match_arenanet_id.split('-')[0] == "1" ? "NA" : "EU";
+            var cLongestSlug = getLongestInArray(oMatch.slugs);
 
             $('div#match > a.get-shortlink').attr('data-match-slug', cLongestSlug);
 
@@ -538,18 +597,15 @@ function setMatch(cMatchId, oMatchlistMatch) {
                 i++;
             };
 
+            _CURRENT_MATCH_ID = cMatchId;
 
-            $('#reload-chart').attr('data-match-id', cMatchId);
-            $('#disable-flattening').attr('data-match-id', cMatchId);
-            $('#enable-flattening').attr('data-match-id', cMatchId);
-
-            if (oMatch.flattened) {
+            if (oMatch.flattened || oMatch.smoothed) {
                 setMessage("Due to issues with the <strong>Guild Wars 2 API</strong> the data of this match has been flattened to be more precise.<br />Please note, that this has altered the timeline of when kills occured. The kill and death counts are correct. I know it's not pretty, but that's as much as i can do 🔥.", "warning");
             }
 
             //Statistik
             setStatisticsView(oMatch);
-            initMatchStatistics(oMatch, oMatchlistMatch);
+            initMatchStatistics(oMatch);
             setStatistics(-1);
 
             m_oHighchartsKills.redraw();
@@ -575,13 +631,13 @@ function setStatisticsView(oMatch) {
     for (var cSeriesKey in oMatch.series) {
         var oSeries = oMatch.series[cSeriesKey];
         var cMapId = oSeries.map_id;
-        var cWorldId = oSeries.world_id;
+        var cWorldId = oSeries.world_arenanet_id;
 
         if (!_STATISTICS_VIEW.worlds[cWorldId]) {
 
             _STATISTICS_VIEW.worlds[cWorldId] = {
                 world_name: oSeries.world_name,
-                world_id: oSeries.world_id,
+                world_id: oSeries.world_arenanet_id,
                 color: oSeries.color,
                 maps: {}
             }
@@ -611,7 +667,7 @@ function setStatisticsView(oMatch) {
             if (!_STATISTICS_VIEW.timeslots[cTimeslotId].worlds[cWorldId]) {
                 _STATISTICS_VIEW.timeslots[cTimeslotId].worlds[cWorldId] = {
                     world_name: oSeries.world_name,
-                    world_id: oSeries.world_id,
+                    world_id: oSeries.world_arenanet_id,
                     color: oSeries.color,
                     maps: {}
                 }
@@ -642,24 +698,14 @@ function clearMessages() {
 }
 
 $('#reload-chart').click(function () {
-    var cMatchId = $(this).attr('data-match-id');
-
-    // setMatch(cMatchId, oMatch);
-
-    setSpecificMatch(cMatchId);
-
+    setSpecificMatch(_CURRENT_MATCH_ID);
 });
 
-$('#disable-flattening').click(function () {
-    m_bFlattening = false;
-    var cMatchId = $(this).attr('data-match-id');
-    setSpecificMatch(cMatchId);
-});
-
-$('#enable-flattening').click(function () {
-    m_bFlattening = true;
-    var cMatchId = $(this).attr('data-match-id');
-    setSpecificMatch(cMatchId);
+$('#button-close-tip-copystats').click(function () {
+    $('#information-addon-copystats').addClass("hidden");
+    $.cookie('tip_copystats', 'set', {
+        expires: 365 * 1000
+    });
 });
 
 function setSeries(oSeries, aWorlds, aMaps, i, cDeathsKills) {
@@ -688,7 +734,7 @@ function setSeries(oSeries, aWorlds, aMaps, i, cDeathsKills) {
             x: Date.parse(moment.utc(oSeriesItem.timeslot_start).local().format()),
             y: nValue,
             name: '<strong>' + moment.utc(oSeriesItem.timeslot_start).local().format('YYYY/MM/DD | dddd') + '</strong><br />' + moment.utc(oSeriesItem.timeslot_start).local().format('HH:mm:ss ') + ' to ' + moment.utc(oSeriesItem.timeslot_end).local().format('HH:mm:ss '),
-            world: oSeries.world_id,
+            world: oSeries.world_arenanet_id,
             map: oSeries.map_id,
             kills: parseInt(oSeriesItem.kills),
             deaths: parseInt(oSeriesItem.deaths),
@@ -701,7 +747,7 @@ function setSeries(oSeries, aWorlds, aMaps, i, cDeathsKills) {
     };
 }
 
-function initMatchStatistics(oMatch, oMatchlistMatch) {
+function initMatchStatistics(oMatch) {
     var cContainerId = '#match-statistics-container';
     var aWorlds = new Array();
     var aWorldColors = getMapColors();
@@ -710,10 +756,10 @@ function initMatchStatistics(oMatch, oMatchlistMatch) {
 
     for (var cSeriesKey in oMatch.series) {
         var oSeries = oMatch.series[cSeriesKey];
-        var cKey = oSeries.world_id; // + '_' + oSeries.color;
+        var cKey = oSeries.world_arenanet_id; // + '_' + oSeries.color;
         if (typeof aWorlds[cKey] === 'undefined') {
             aWorlds[cKey] = {
-                world_id: oSeries.world_id,
+                world_id: oSeries.world_arenanet_id,
                 color: oSeries.color,
                 world_name: oSeries.world_name,
                 maps: new Array()
@@ -732,10 +778,10 @@ function initMatchStatistics(oMatch, oMatchlistMatch) {
         cContainerContent += '<div class="row"><div class="col-md-9"><h4>' + oWorld.world_name + '</h4><span class="copy-statistics copy-' + oWorld.world_id + '" title="Copy statistics to clipboard"><i class="glyphicon glyphicon-copy"></i></span></div><div class="col-md-3"><h4 class=" world-kd ' + oWorld.world_id + '"></h4></div></div><h6>';
 
         var i = 0;
-        for (var cAddtionalWorldKey in oMatchlistMatch.worlds[oWorld.color].additional_worlds) {
+        for (var cAddtionalWorldKey in oMatch.worlds[oWorld.color].additional_worlds) {
             i++;
-            cContainerContent += oMatchlistMatch.worlds[oWorld.color].additional_worlds[cAddtionalWorldKey].name;
-            if (i < Object.keys(oMatchlistMatch.worlds[oWorld.color].additional_worlds).length) {
+            cContainerContent += oMatch.worlds[oWorld.color].additional_worlds[cAddtionalWorldKey].name;
+            if (i < Object.keys(oMatch.worlds[oWorld.color].additional_worlds).length) {
                 cContainerContent += ", ";
             }
         }
@@ -747,12 +793,12 @@ function initMatchStatistics(oMatch, oMatchlistMatch) {
 
             cContainerContent += '<div class="row kd" data-world="' + oWorld.world_id + '" data-map-id="' + cMapId + '" data-color="' + aWorldColors[oMap.map_id] + '" data-world-name="' + oWorld.world_name + '" data-map-name="' + cMapName + '">';
 
-            cContainerContent += '<div class="col-md-2" style="color: ' + aWorldColors[oMap.map_id] + '">' + cMapName + '</div><div class="col-md-7"><div class="progress"><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' kills no-nightmode" title="kills" role="progressbar" style="width: 50%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, false) + ';"  ></div><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' deaths no-nightmode" style="width: 50%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, true) + ';" title="deaths"></div></div></div><div class="col-md-3 ' + cMapId + ' ' + oWorld.world_id + ' kdr"></div>';
+            cContainerContent += '<div class="col-md-2 col-world-name" style="color: ' + aWorldColors[oMap.map_id] + '">' + cMapName + '</div><div class="col-md-7 col-world-kills"><div class="progress"><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' kills no-nightmode" title="kills" role="progressbar" style="width: 50%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, false) + ';"  ></div><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' deaths no-nightmode" style="width: 50%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, true) + ';" title="deaths"></div></div></div><div class="col-md-3 ' + cMapId + ' ' + oWorld.world_id + ' kdr col-kdr"></div>';
 
             cContainerContent += '</div>';
         }
 
-        cContainerContent += '<div class="row kd-total" data-world="' + oWorld.world_id + '"><div class="col-md-2"><strong>Total</strong></div><div class="col-md-7"><div class="progress"><div class="progress-bar kills total ' + oWorld.world_id + '  no-nightmode" title="kills" role="progressbar" style="width: 50%; background-color: ' + shadeColor(colorNameToHex(oWorld.color), 0.3) + ';"  ></div><div class="progress-bar ' + oWorld.world_id + ' total deaths no-nightmode" style="width: 50%; background-color: ' + shadeColor(colorNameToHex(oWorld.color), -0.3) + ';" title="deaths"></div></div></div><div class="col-md-3"><strong><span class="kdr total ' + oWorld.world_id + ' "></span></strong></div></div>';
+        cContainerContent += '<div class="row kd-total" data-world="' + oWorld.world_id + '"><div class="col-md-2 col-world-name"><strong>Total</strong></div><div class="col-md-7 col-world-kills"><div class="progress"><div class="progress-bar kills total ' + oWorld.world_id + '  no-nightmode" title="kills" role="progressbar" style="width: 50%; background-color: ' + shadeColor(colorNameToHex(oWorld.color), 0.3) + ';"  ></div><div class="progress-bar ' + oWorld.world_id + ' total deaths no-nightmode" style="width: 50%; background-color: ' + shadeColor(colorNameToHex(oWorld.color), -0.3) + ';" title="deaths"></div></div></div><div class="col-md-3 col-kdr"><strong><span class="kdr total ' + oWorld.world_id + ' "></span></strong></div></div>';
 
         cContainerContent += "</div>";
     }
@@ -769,7 +815,7 @@ function initMatchStatistics(oMatch, oMatchlistMatch) {
 
     for (var cWorldKey in aWorlds) {
 
-        $('.copy-' + aWorlds[cWorldKey].world_id).attr('data-clipboard-text', getClipboardWorld(aWorlds[cWorldKey].world_id, oMatch));
+        $('.copy-' + aWorlds[cWorldKey].world_id).attr('data-clipboard-text', getClipboard(oMatch, aWorlds[cWorldKey].world_id, null));
         new Clipboard('.copy-' + aWorlds[cWorldKey].world_id);
     }
 }
@@ -816,80 +862,47 @@ function setStatisticForWorld(oWorld) {
     $('.kdr.total.' + oWorld.world_id).html("&empty;" + getKdr(nSumKills, nSumDeaths));
 }
 
-function getClipboardWorld(nWorldId, oMatch) {
-
+function getClipboard(oMatch, nWorldId, nTimeslotId) {
     var oWorld = _STATISTICS_VIEW.worlds[nWorldId];
+    var cTimestamp = "";
+
+    if (nTimeslotId != undefined && nTimeslotId) {
+        oWorld = _STATISTICS_VIEW.timeslots[nTimeslotId].worlds[nWorldId];
+
+        cTimestamp = " (" + moment.utc(_STATISTICS_VIEW.timeslots[nTimeslotId].timeslot_start).local().format('HH:mm') + '-' + moment.utc(_STATISTICS_VIEW.timeslots[nTimeslotId].timeslot_end).local().format('HH:mm') + ")";
+    }
+
 
     var nFullDeaths = 0;
     var nFullKills = 0;
-    var aMaps = new Array();
-    var cWorldName = oWorld.world_name;
     var aWorldColors = getMapColors();
+    var aMaps = new Array();
 
     for (var nMapId in oWorld.maps) {
         var oMap = oWorld.maps[nMapId];
         var nKills = parseInt(oMap.kills);
         var nDeaths = parseInt(oMap.deaths);
-        var cWorld = oWorld.world_name;
-        var cMap = oMap.map_id == "38" ? "EBG" : "BL";
+        var cMap = oMap.map_id == "38" ? "EBG" : "";
         var cColor = aWorldColors[oMap.map_id];
 
         nFullDeaths += nDeaths;
         nFullKills += nKills;
 
-        var cOutput = getKdr(nKills, nDeaths) + ' k/d (' + nKills + '/' + nDeaths + ') on ';
+        var cOutput = getKdr(nKills, nDeaths) + ' kd (' + nKills + '/' + nDeaths + ') @ ';
         if (cColor.indexOf('#') == -1) {
-            cOutput += cColor.toProperCase() + " ";
+            cOutput += cColor.toProperCase();
         }
         cOutput += cMap;
 
         aMaps.push(cOutput);
     }
 
+    var cWorldOverall = oWorld.world_name.split('[')[0].trim() + cTimestamp + ": " + getKdr(nFullKills, nFullDeaths) + ' kd (' + nFullKills + '/' + nFullDeaths + ') | ';
 
-    var cWorldOverall = cWorldName + ": " + getKdr(nFullKills, nFullDeaths) + ' k/d (' + nFullKills + '/' + nFullDeaths + ') | ';
 
-
-    return cWorldOverall + aMaps.join(' | ') + ' - updated ' + moment.utc(oMatch.last_update).local().fromNow();
+    return cWorldOverall + aMaps.join(' | ') + ' - updated ' + moment.utc(oMatch.last_update).local().fromNow().replace("minutes", "min").replace("seconds", "sec");
 }
 
-function getClipboardWorldAndTimeslot(nWorldId, nTimeslotId) {
-
-    var oWorld = _STATISTICS_VIEW.timeslots[nTimeslotId].worlds[nWorldId];
-    var oTimeslot = _STATISTICS_VIEW.timeslots[nTimeslotId];
-
-    var nFullDeaths = 0;
-    var nFullKills = 0;
-    var aMaps = new Array();
-    var cWorldName = oWorld.world_name;
-    var aWorldColors = getMapColors();
-
-    for (var nMapId in oWorld.maps) {
-        var oMap = oWorld.maps[nMapId];
-        var nKills = parseInt(oMap.kills);
-        var nDeaths = parseInt(oMap.deaths);
-        var cWorld = oWorld.world_name;
-        var cMap = oMap.map_id == "38" ? "EB" : "BL";
-        var cColor = aWorldColors[oMap.map_id];
-
-        nFullDeaths += nDeaths;
-        nFullKills += nKills;
-
-        var cOutput = getKdr(nKills, nDeaths) + 'KD (' + nKills + '/' + nDeaths + ') @ ';
-        if (cColor.indexOf('#') == -1) {
-            cOutput += cColor.toProperCase() + " ";
-        }
-        cOutput += cMap;
-
-        aMaps.push(cOutput);
-    }
-
-
-    var cWorldOverall = cWorldName + "(" + moment.utc(oTimeslot.timeslot_start).local().format('HH:mm') + '-' + moment.utc(oTimeslot.timeslot_end).local().format('HH:mm') + "): " + getKdr(nFullKills, nFullDeaths) + ' k/d (' + nFullKills + '/' + nFullDeaths + ') | ';
-
-
-    return cWorldOverall + aMaps.join(' | ');
-}
 
 //Resets all Chart series
 function resetView() {
@@ -903,8 +916,8 @@ function resetView() {
     _STATISTICS_VIEW = null;
 }
 
-function getFlagShort(cWorldId) {
-    var cLeft2 = cWorldId.substring(0, 2);
+function getFlagShort(nWorldId) {
+    var cLeft2 = nWorldId.toString().substring(0, 2);
     switch (cLeft2) {
         case "10":
             return "us";
@@ -928,6 +941,9 @@ function setLoading(bVisible) {
 }
 
 function getChartOptions() {
+
+    var renderContainer = 'main-chart-container';
+
     Highcharts.setOptions({
         global: {
             useUTC: false
@@ -936,7 +952,7 @@ function getChartOptions() {
     var oChartOptions = {
         chart: {
             backgroundColor: 'transparent',
-            renderTo: 'main-chart-container',
+            renderTo: renderContainer,
             height: 500,
             zoomType: 'xy',
             spacingLeft: 0,
@@ -1024,7 +1040,7 @@ function setCopyModal(cTimeslotId) {
     $('#copy-timeslot-green').attr('data-world-id', _WORLDS['green'].id);
 
     $('#copy-timeslot-blue-name').text(_WORLDS['blue'].name);
-    $('copy-timeslot-blue').attr('data-world-id', _WORLDS['blue'].id);
+    $('#copy-timeslot-blue').attr('data-world-id', _WORLDS['blue'].id);
 
     $('#copy-timeslot-red-name').text(_WORLDS['red'].name);
     $('#copy-timeslot-red').attr('data-world-id', _WORLDS['red'].id);
@@ -1043,7 +1059,7 @@ function setCopyModal(cTimeslotId) {
 $('.copy-timeslot').click(function () {
     var nTimeslotId = $(this).attr('data-timeslot-id');
     var nWorldId = $(this).attr('data-world-id');
-    $(this).attr('data-clipboard-text', getClipboardWorldAndTimeslot(nWorldId, nTimeslotId));
+    $(this).attr('data-clipboard-text', getClipboard(_CURRENT_MATCH, nWorldId, nTimeslotId));
     $('#copy-timeslot').addClass('hidden');
 });
 
@@ -1068,17 +1084,17 @@ function getMapChartColor(cColor, nMapId, bDeaths) {
     var nShade = 0;
     var nIntensity = 1;
     switch (nMapId) {
-        case "34":
+        case 34:
             nShade = 0.09;
             break;
-        case "95":
+        case 95:
             nShade = 0.15;
             break;
-        case "96":
+        case 96:
             nShade = 0.3;
             break;
-        case "1099":
-        case "97":
+        case 1099:
+        case 97:
             nShade = 0.45;
             break;
     }
@@ -1179,7 +1195,7 @@ function getKdr(nKills, nDeaths) {
         }
         return '&infin;';
     }
-    return "1.00";
+    return "0.00";
 }
 
 
