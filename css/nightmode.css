@@ -57,6 +57,14 @@ span.label.label-danger {
     outline: 1px #d9534f solid;
 }
 
+span.label.label-warning {
+    outline: 1px #855109 solid;
+}
+
+span.label.label-default {
+    outline: 1px #333 solid;
+}
+
 span.label.label-success {
     outline: 1px #5cb85c solid;
 }

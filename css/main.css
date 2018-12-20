@@ -65,9 +65,21 @@ h2 {
   }
 }
 
+@media (max-width: 768px) {
+  span.label-ppk-percentage {
+    display: none;
+  }
+}
+
 @media (min-width: 1023px) {
   .container {
     max-width: 1000px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .container {
+    max-width: 1200px;
   }
 }
 
@@ -122,6 +134,14 @@ h2 {
   div#chart-container,
   div#main-chart-container {
     width: 970px;
+  }
+}
+
+@media screen and (min-width: 1279px) {
+
+  div#chart-container,
+  div#main-chart-container {
+    width: 1140px;
   }
 }
 
@@ -252,6 +272,10 @@ div.matchlist-eyecatcher span.matchlist-tier {
   display: block;
 }
 
+span.label-ppk-percentage {
+  margin-left: 4px;
+}
+
 div#matchlist-container>div.list-group-item {
   padding: 2px 15px 10px 15px;
 }
@@ -360,6 +384,10 @@ span.copy-statistics {
 
 input.clipboard {
   display: none;
+}
+
+div.col-kdr {
+  padding-left: 0px !important;
 }
 
 div#message-container {
@@ -613,6 +641,7 @@ i.icon.icon-current {
 
   .content {
     padding: 0 15px !important;
+    max-width: 720px;
   }
 
   .matchlist-search {

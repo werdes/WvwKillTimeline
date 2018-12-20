@@ -6,8 +6,8 @@ var m_bFlattening = true;
 var _STATISTICS_VIEW = null;
 var _CURSOR = null;
 var _WORLDS = null;
-var _API_BASE = "http://localhost:56965/api/";
-// var _API_BASE = "api/";
+// var _API_BASE = "http://localhost:56965/api/";
+var _API_BASE = "api/";
 var _CURRENT_MATCH_ID;
 var _CURRENT_MATCH;
 var _SETTINGS = {
@@ -340,7 +340,7 @@ function setAllMatchlist() {
                     $(cContainerId).append('<h2>' + moment.utc(oMatch.start).local().format('YYYY.MM.DD') + ' - ' + moment.utc(oMatch.end).local().format('YYYY.MM.DD') + '</h2></div>');
                     cLastStartDate = cCurrStartDate;
                 }
-                setMatchlistMatchContainer(cContainerId, cMatchId, oMatch);
+                displayMatchlistMatchContainer(cContainerId, cMatchId, oMatch);
             };
             setLoading(false);
             setView(ENUM_VIEW.MATCHLIST);
@@ -407,7 +407,7 @@ function setCurrentMatchlist() {
             setView(ENUM_VIEW.NONE);
 
             for (var cMatchId in oData.responseJSON) {
-                setMatchlistMatchContainer(cContainerId, cMatchId, oData.responseJSON[cMatchId]);
+                displayMatchlistMatchContainer(cContainerId, cMatchId, oData.responseJSON[cMatchId]);
             };
 
             setLoading(false);
@@ -419,7 +419,7 @@ function setCurrentMatchlist() {
     });
 }
 
-function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
+function displayMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
     var cTier = oMatch.arenanet_id.split('-')[1];
     var cRegion = oMatch.arenanet_id.split('-')[0] == "1" ? "NA" : "EU";
     var cDebugInfo = (m_bDebug ? cMatchId : "");
@@ -449,14 +449,27 @@ function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
     for (var cWorldId in aWorlds) {
         var oWorld = aWorlds[cWorldId];
         var nKd = parseInt(oWorld.kills) / parseInt(oWorld.deaths);
-        var cLabelClass = nKd >= 1 ? "success" : (nKd.toFixed(2) == 1 ? "warning" : "danger");
-        cContainer += '<div class="row"><div class="col-md-1 matchlist-world-kd">';
+        var cLabelKdrClass = nKd >= 1 ? "success" : (nKd.toFixed(2) == 1 ? "warning" : "danger");
+        var nWidthLabels = oMatch.has_score_data ? 2 : 1;
+        var nWidthWorlds = oMatch.has_score_data ? 7 : 8;
 
-        cContainer += '<span title="Kills: ' + oWorld.kills + ' / Deaths: ' + oWorld.deaths + '" class="label label-' + cLabelClass + '">KD: ' + getKdr(oWorld.kills, oWorld.deaths) + '</span>';
+
+        cContainer += '<div class="row"><div class="col-md-' + nWidthLabels + ' matchlist-world-kd">';
+
+
+        cContainer += '<span title="Kills: ' + oWorld.kills + ' / Deaths: ' + oWorld.deaths + '" class="label label-' + cLabelKdrClass + '">KD: ' + getKdr(oWorld.kills, oWorld.deaths) + '</span>';
+
+        if (oMatch.has_score_data) {
+            var nPpkTotal = (oMatch.ppk_value * oWorld.kills);
+            var nPpkPercentage = nPpkTotal / oWorld.score * 100;
+
+            var cLabelPpkClass = getClassForMatchlistPpkRanking(aWorlds, oWorld, oMatch);
+            cContainer += '<span title="Total score: ' + oWorld.score.toThousandSeparator() + '" title="" class="label label-' + cLabelPpkClass + ' label-ppk-percentage">' + nPpkPercentage.toFixedLeading(2, 2) + '% PPK</span>';
+        }
 
         var oWidths = getWidths(parseInt(oWorld.kills), parseInt(oWorld.deaths));
 
-        cContainer += '</div><div class="col-md-3 matchlist-stat-container"><div class="progress"><div class="progress-bar kills total ' + oWorld.world_id + ' no-nightmode" title="kills" role="progressbar" style="width: ' + oWidths.kills + '; background-color: ' + shadeColor(colorNameToHex(oWorld.color), 0.3) + ';"  >' + oWorld.kills + '</div><div class="progress-bar ' + oWorld.world_id + ' total deaths no-nightmode" style="width: ' + oWidths.deaths + '; background-color: ' + shadeColor(colorNameToHex(oWorld.color), -0.3) + ';" title="deaths">' + oWorld.deaths + '</div></div></div><div class="col-md-8 matchlist-world-container"><b><i class="famfamfam-flag-' + getFlagShort(oWorld.arenanet_id) + '"></i> ' + oWorld.name + '</b>';
+        cContainer += '</div><div class="col-md-3 matchlist-stat-container"><div class="progress"><div class="progress-bar kills total ' + oWorld.world_id + ' no-nightmode" title="kills" role="progressbar" style="width: ' + oWidths.kills + '; background-color: ' + shadeColor(colorNameToHex(oWorld.color), 0.3) + ';"  >' + oWorld.kills + '</div><div class="progress-bar ' + oWorld.world_id + ' total deaths no-nightmode" style="width: ' + oWidths.deaths + '; background-color: ' + shadeColor(colorNameToHex(oWorld.color), -0.3) + ';" title="deaths">' + oWorld.deaths + '</div></div></div><div class="col-md-' + nWidthWorlds + ' matchlist-world-container"><b><i class="famfamfam-flag-' + getFlagShort(oWorld.arenanet_id) + '"></i> ' + oWorld.name + '</b>';
 
         aSearchQuery.push(oWorld.name);
 
@@ -480,6 +493,88 @@ function setMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
         window.location = cUrl;
     });
 }
+
+function getClassForMatchlistPpkRanking(aWorlds, oWorld, oMatch) {
+    var aSorted = aWorlds.slice(0).sort(function (a, b) {
+        var nPpkTotalA = (oMatch.ppk_value * a.kills);
+        var nPpkPercentageA = nPpkTotalA / a.score * 100;
+        var nPpkTotalB = (oMatch.ppk_value * b.kills);
+        var nPpkPercentageB = nPpkTotalB / b.score * 100;
+
+        return nPpkPercentageB - nPpkPercentageA;
+    });
+
+    if (aSorted[0] == oWorld) {
+        return "success";
+    }
+    if (aSorted[aSorted.length - 2] == oWorld) {
+        return "warning";
+    }
+    if (aSorted[aSorted.length - 1] == oWorld) {
+        return "danger";
+    }
+    return "default";
+}
+
+function getClassForWorldStatisticsPpkRanking(aWorlds, oWorld) {
+    var aSorted = aWorlds.slice(0).sort(function (a, b) {
+
+        var sumKillsA = 0;
+        var sumScoreA = 0;
+        var sumKillsB = 0;
+        var sumScoreB = 0;
+
+        for (var mapId in a.maps) {
+            var map = a.maps[mapId];
+            sumKillsA += map.kills;
+            sumScoreA += map.score;
+        }
+        for (var mapId in b.maps) {
+            var map = b.maps[mapId];
+            sumKillsB += map.kills;
+            sumScoreB += map.score;
+        }
+
+        var nPpkTotalA = (_CURRENT_MATCH.ppk_value * sumKillsA);
+        var nPpkPercentageA = nPpkTotalA / sumScoreA * 100;
+        var nPpkTotalB = (_CURRENT_MATCH.ppk_value * sumKillsB);
+        var nPpkPercentageB = nPpkTotalB / sumScoreB * 100;
+
+        return nPpkPercentageB - nPpkPercentageA;
+    });
+
+    if (aSorted[0].world_id == oWorld.world_id) {
+        return "success";
+    }
+    if (aSorted[aSorted.length - 2].world_id == oWorld.world_id) {
+        return "warning";
+    }
+    if (aSorted[aSorted.length - 1].world_id == oWorld.world_id) {
+        return "danger";
+    }
+    return "default";
+}
+
+function getClassForMapPpkRanking(oMapList, oMap) {
+    var aMaps = Object.values(oMapList);
+    var aSorted = aMaps.slice(0).sort(function (a, b) {
+        var nPpkTotalA = (_CURRENT_MATCH.ppk_value * a.kills);
+        var nPpkPercentageA = nPpkTotalA / a.score * 100;
+        var nPpkTotalB = (_CURRENT_MATCH.ppk_value * b.kills);
+        var nPpkPercentageB = nPpkTotalB / b.score * 100;
+
+        return nPpkPercentageB - nPpkPercentageA;
+    });
+
+    if (aSorted[0].map_id == oMap.map_id) {
+        return "success";
+    }
+    if (aSorted[aSorted.length - 1].map_id == oMap.map_id) {
+        return "danger";
+    }
+    return "default";
+}
+
 
 $('#modal-shortlink').on('shown.bs.modal', function (event) {
     var oSender = $(event.relatedTarget);
@@ -647,7 +742,8 @@ function setStatisticsView(oMatch) {
             _STATISTICS_VIEW.worlds[cWorldId].maps[cMapId] = {
                 map_id: oSeries.map_id,
                 kills: 0,
-                deaths: 0
+                deaths: 0,
+                score: 0
             }
         }
 
@@ -677,14 +773,17 @@ function setStatisticsView(oMatch) {
                 _STATISTICS_VIEW.timeslots[cTimeslotId].worlds[cWorldId].maps[cMapId] = {
                     map_id: oSeries.map_id,
                     kills: 0,
-                    deaths: 0
+                    deaths: 0,
+                    score: 0
                 }
             }
 
             _STATISTICS_VIEW.worlds[cWorldId].maps[cMapId].kills += parseInt(oSeriesItem.kills);
             _STATISTICS_VIEW.worlds[cWorldId].maps[cMapId].deaths += parseInt(oSeriesItem.deaths);
+            _STATISTICS_VIEW.worlds[cWorldId].maps[cMapId].score += parseInt(oSeriesItem.score_gain);
             _STATISTICS_VIEW.timeslots[cTimeslotId].worlds[cWorldId].maps[cMapId].kills += parseInt(oSeriesItem.kills);
             _STATISTICS_VIEW.timeslots[cTimeslotId].worlds[cWorldId].maps[cMapId].deaths += parseInt(oSeriesItem.deaths);
+            _STATISTICS_VIEW.timeslots[cTimeslotId].worlds[cWorldId].maps[cMapId].score += parseInt(oSeriesItem.score_gain);
         }
     }
 }
@@ -751,6 +850,9 @@ function initMatchStatistics(oMatch) {
     var cContainerId = '#match-statistics-container';
     var aWorlds = new Array();
     var aWorldColors = getMapColors();
+    var nWidthKillsDeaths = oMatch.has_score_data ? 6 : 8;
+    var nWidthInfo = oMatch.has_score_data ? 4 : 2;
+    var cHasScoreData = oMatch.has_score_data ? " has-score-data" : "";
 
     $(cContainerId).html('');
 
@@ -771,7 +873,7 @@ function initMatchStatistics(oMatch) {
     }
 
 
-    var cContainerContent = '<div class="row">';
+    var cContainerContent = '<div class="row' + cHasScoreData + '">';
     for (var cWorldKey in aWorlds) {
         oWorld = aWorlds[cWorldKey];
         cContainerContent += '<div class="col-md-4 world-container ' + oWorld.world_id + '" data-world-name="' + oWorld.world_name + '">';
@@ -791,14 +893,14 @@ function initMatchStatistics(oMatch) {
             var oMap = oWorld.maps[cMapId];
             var cMapName = oMap.map_id == "38" ? "EBG" : "Border";
 
+
+
             cContainerContent += '<div class="row kd" data-world="' + oWorld.world_id + '" data-map-id="' + cMapId + '" data-color="' + aWorldColors[oMap.map_id] + '" data-world-name="' + oWorld.world_name + '" data-map-name="' + cMapName + '">';
 
-            cContainerContent += '<div class="col-md-2 col-world-name" style="color: ' + aWorldColors[oMap.map_id] + '">' + cMapName + '</div><div class="col-md-7 col-world-kills"><div class="progress"><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' kills no-nightmode" title="kills" role="progressbar" style="width: 50%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, false) + ';"  ></div><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' deaths no-nightmode" style="width: 50%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, true) + ';" title="deaths"></div></div></div><div class="col-md-3 ' + cMapId + ' ' + oWorld.world_id + ' kdr col-kdr"></div>';
-
-            cContainerContent += '</div>';
+            cContainerContent += '<div class="col-md-2 col-world-name" style="color: ' + aWorldColors[oMap.map_id] + '">' + cMapName + '</div><div class="col-md-' + nWidthKillsDeaths + ' col-world-kills"><div class="progress"><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' kills no-nightmode" title="kills" role="progressbar" style="width: 50%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, false) + ';"  ></div><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' deaths no-nightmode" style="width: 50%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, true) + ';" title="deaths"></div></div></div><div class="col-md-' + nWidthInfo + ' ' + cMapId + ' ' + oWorld.world_id + ' ' + cHasScoreData + ' kdr col-kdr"></div></div>';
         }
 
-        cContainerContent += '<div class="row kd-total" data-world="' + oWorld.world_id + '"><div class="col-md-2 col-world-name"><strong>Total</strong></div><div class="col-md-7 col-world-kills"><div class="progress"><div class="progress-bar kills total ' + oWorld.world_id + '  no-nightmode" title="kills" role="progressbar" style="width: 50%; background-color: ' + shadeColor(colorNameToHex(oWorld.color), 0.3) + ';"  ></div><div class="progress-bar ' + oWorld.world_id + ' total deaths no-nightmode" style="width: 50%; background-color: ' + shadeColor(colorNameToHex(oWorld.color), -0.3) + ';" title="deaths"></div></div></div><div class="col-md-3 col-kdr"><strong><span class="kdr total ' + oWorld.world_id + ' "></span></strong></div></div>';
+        cContainerContent += '<div class="row kd-total" data-world="' + oWorld.world_id + '"><div class="col-md-2 col-world-name"><strong>Total</strong></div><div class="col-md-' + nWidthKillsDeaths + ' col-world-kills"><div class="progress"><div class="progress-bar kills total ' + oWorld.world_id + '  no-nightmode" title="kills" role="progressbar" style="width: 50%; background-color: ' + shadeColor(colorNameToHex(oWorld.color), 0.3) + ';"  ></div><div class="progress-bar ' + oWorld.world_id + ' total deaths no-nightmode" style="width: 50%; background-color: ' + shadeColor(colorNameToHex(oWorld.color), -0.3) + ';" title="deaths"></div></div></div><div class="col-md-' + nWidthInfo + ' col-kdr' + cHasScoreData + '"><strong><span class="kdr total ' + oWorld.world_id + ' "></span></strong></div></div>';
 
         cContainerContent += "</div>";
     }
@@ -825,41 +927,69 @@ function setStatistics(nTimeslotId) {
         //ALL
         for (var nWorldId in _STATISTICS_VIEW.worlds) {
             var oWorld = _STATISTICS_VIEW.worlds[nWorldId];
-            setStatisticForWorld(oWorld);
+            setStatisticForWorld(oWorld, _STATISTICS_VIEW.worlds);
         }
     } else {
         //Timeslot
         for (var nWorldId in _STATISTICS_VIEW.timeslots[nTimeslotId].worlds) {
             var oWorld = _STATISTICS_VIEW.timeslots[nTimeslotId].worlds[nWorldId];
-            setStatisticForWorld(oWorld);
+            setStatisticForWorld(oWorld, _STATISTICS_VIEW.timeslots[nTimeslotId].worlds);
         }
     }
 }
 
-function setStatisticForWorld(oWorld) {
+function setStatisticForWorld(oWorld, oContext) {
     var nSumKills = 0;
     var nSumDeaths = 0;
+    var nSumScore = 0;
 
 
     for (var nMapId in oWorld.maps) {
         var oMap = oWorld.maps[nMapId];
         var oWidths = getWidths(oMap.kills, oMap.deaths);
 
+        var nKd = parseInt(oMap.kills) / parseInt(oMap.deaths);
+        var cLabelKdrClass = nKd >= 1 ? "success" : (nKd.toFixed(2) == 1 ? "warning" : "danger");
 
         $('.progress-bar.' + oWorld.world_id + '.' + oMap.map_id + ".kills").css("width", oWidths.kills).text(oMap.kills);
         $('.progress-bar.' + oWorld.world_id + '.' + oMap.map_id + ".deaths").css("width", oWidths.deaths).text(oMap.deaths);
-        $('.kdr.' + oWorld.world_id + '.' + oMap.map_id).html("&empty;" + getKdr(oMap.kills, oMap.deaths));
+        $('.kdr.' + oWorld.world_id + '.' + oMap.map_id).html('<span class="label label-' + cLabelKdrClass + '">&empty; ' + getKdr(oMap.kills, oMap.deaths) + '</span>');
+
+        if (_CURRENT_MATCH.has_score_data) {
+
+            var nPpkTotal = (_CURRENT_MATCH.ppk_value * oMap.kills);
+            var nPpkPercentage = nPpkTotal / oMap.score * 100;
+
+            var cLabelPpkClass = getClassForMapPpkRanking(oWorld.maps, oMap);
+            $('.kdr.' + oWorld.world_id + '.' + oMap.map_id).append('<span title="Total score: ' + oMap.score.toThousandSeparator() + '" class="label-ppk-percentage label label-' + cLabelPpkClass + ' label-ppk-percentage">' + nPpkPercentage.toFixedLeading(2, 2) + '% PPK</span>');
+        }
 
         nSumKills += oMap.kills;
         nSumDeaths += oMap.deaths;
+        nSumScore += oMap.score;
     }
 
     var oTotalWidths = getWidths(nSumKills, nSumDeaths);
 
+    var nKd = nSumKills / nSumDeaths;
+    var cLabelKdrClass = nKd >= 1 ? "success" : (nKd.toFixed(2) == 1 ? "warning" : "danger");
+
+
     $('.progress-bar.' + oWorld.world_id + '.total.kills').css("width", oTotalWidths.kills).text(nSumKills);
     $('.progress-bar.' + oWorld.world_id + '.total.deaths').css("width", oTotalWidths.deaths).text(nSumDeaths);
     $('.world-kd.' + oWorld.world_id).html("&empty;" + getKdr(nSumKills, nSumDeaths));
-    $('.kdr.total.' + oWorld.world_id).html("&empty;" + getKdr(nSumKills, nSumDeaths));
+    $('.kdr.total.' + oWorld.world_id).html('<span class="label label-' + cLabelKdrClass + '">&empty; ' + getKdr(nSumKills, nSumDeaths) + '</span>');
+
+    if (_CURRENT_MATCH.has_score_data) {
+
+        var nPpkTotal = (_CURRENT_MATCH.ppk_value * nSumKills);
+        var nPpkPercentage = nPpkTotal / nSumScore * 100;
+
+        var cLabelPpkClass = getClassForWorldStatisticsPpkRanking(Object.values(oContext), oWorld);
+        $('.kdr.total.' + oWorld.world_id).append('<span title="Total score: ' + nSumScore.toThousandSeparator() + '" class="label-ppk-percentage label label-' + cLabelPpkClass + ' label-ppk-percentage">' + nPpkPercentage.toFixedLeading(2, 2) + '% PPK</span>');
+    }
+
+
 }
 
 function getClipboard(oMatch, nWorldId, nTimeslotId) {
@@ -914,6 +1044,7 @@ function resetView() {
     }
 
     _STATISTICS_VIEW = null;
+    _CURRENT_MATCH = null;
 }
 
 function getFlagShort(nWorldId) {
@@ -1249,6 +1380,11 @@ String.prototype.toProperCase = function () {
         return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
     });
 };
+
+Number.prototype.toFixedLeading = function (leadingZeroes, fractionDigits) {
+    var leading = new Array(leadingZeroes + 1).join('0');
+    return (leading + this.toFixed(fractionDigits)).slice((leadingZeroes + fractionDigits + 1) * -1);
+}
 
 Number.prototype.toThousandSeparator = function () {
     return this.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
