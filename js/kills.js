@@ -958,7 +958,7 @@ function setStatisticForWorld(oWorld, oContext) {
         if (_CURRENT_MATCH.has_score_data) {
 
             var nPpkTotal = (_CURRENT_MATCH.ppk_value * oMap.kills);
-            var nPpkPercentage = nPpkTotal / oMap.score * 100;
+            var nPpkPercentage = oMap.score > 0 ? (nPpkTotal / oMap.score * 100) : 0;
 
             var cLabelPpkClass = getClassForMapPpkRanking(oWorld.maps, oMap);
             $('.kdr.' + oWorld.world_id + '.' + oMap.map_id).append('<span title="Total score: ' + oMap.score.toThousandSeparator() + '" class="label-ppk-percentage label label-' + cLabelPpkClass + ' label-ppk-percentage">' + nPpkPercentage.toFixedLeading(2, 2) + '% PPK</span>');
@@ -983,7 +983,7 @@ function setStatisticForWorld(oWorld, oContext) {
     if (_CURRENT_MATCH.has_score_data) {
 
         var nPpkTotal = (_CURRENT_MATCH.ppk_value * nSumKills);
-        var nPpkPercentage = nPpkTotal / nSumScore * 100;
+        var nPpkPercentage = nSumScore > 0 ? (nPpkTotal / nSumScore * 100) : 0;
 
         var cLabelPpkClass = getClassForWorldStatisticsPpkRanking(Object.values(oContext), oWorld);
         $('.kdr.total.' + oWorld.world_id).append('<span title="Total score: ' + nSumScore.toThousandSeparator() + '" class="label-ppk-percentage label label-' + cLabelPpkClass + ' label-ppk-percentage">' + nPpkPercentage.toFixedLeading(2, 2) + '% PPK</span>');
@@ -1030,7 +1030,7 @@ function getClipboard(oMatch, nWorldId, nTimeslotId) {
     var cWorldOverall = oWorld.world_name.split('[')[0].trim() + cTimestamp + ": " + getKdr(nFullKills, nFullDeaths) + ' kd (' + nFullKills + '/' + nFullDeaths + ') | ';
 
 
-    return cWorldOverall + aMaps.join(' | ') + ' - updated ' + moment.utc(oMatch.last_update).local().fromNow().replace("minutes", "min").replace("seconds", "sec");
+    return cWorldOverall + aMaps.join(' | ') + ' - updated ' + moment.utc(oMatch.last_update).local().fromNow();
 }
 
 
