@@ -39,7 +39,11 @@
                                             // Exit. Process in next call.
                                             return createArrayFromRange(min, max, 6);
                                         }
-                                        _self.maxmin.push({ id: axis.options.index, min: axis.min, max: axis.max });
+                                        _self.maxmin.push({
+                                            id: axis.options.index,
+                                            min: axis.min,
+                                            max: axis.max
+                                        });
                                     }
                                 }
                             }
@@ -144,4 +148,4 @@
         chart.redraw();
         chart.axes[0].update();
     });
-} (Highcharts));
+}(Highcharts));

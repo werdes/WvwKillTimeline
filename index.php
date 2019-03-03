@@ -1,3 +1,15 @@
+<?php
+$bootstrapCssFile = "css/bootstrap/bootstrap.min.css";
+if (isset($_COOKIE["settings"]) && !empty($_COOKIE["settings"])) {
+    $settingsCookie = json_decode($_COOKIE["settings"]);
+    if (property_exists($settingsCookie, "darkmode")) {
+        if ($settingsCookie->darkmode) {
+            $bootstrapCssFile = "css/bootstrap/bootstrap.dark.min.css";
+        }
+    }
+}
+?>
+
 <!DOCTYPE html>
 
 <html lang="en">
@@ -17,8 +29,9 @@
   <link href="https://fonts.googleapis.com/css?family=Cinzel|Roboto:300,400,500,700"
     rel="stylesheet">
   <link rel="stylesheet"
+    name="bootstrap"
     type="text/css"
-    href="css/bootstrap.min.css" />
+    href="<?=$bootstrapCssFile;?>" />
   <link rel="stylesheet"
     type="text/css"
     href="https://cdn.datatables.net/v/bs/dt-1.10.16/fh-3.1.3/rg-1.0.2/datatables.min.css" />
@@ -27,6 +40,7 @@
     href="css/ie10-viewport-bug-workaround.min.css" />
   <link rel="stylesheet"
     type="text/css"
+    name="main"
     href="css/main.min.css" />
   <link rel="stylesheet"
     type="text/css"
@@ -37,7 +51,6 @@
       <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
     <![endif]-->
 </head>
-
 <body>
   <div class="container">
     <!--Header Start-->
@@ -57,7 +70,7 @@
           <div class="branding-container">
             <a class="text-muted branding"
               href="#/matches/current/">
-              <h3>WvW Kills</h3>
+              WvW Kills
             </a>
           </div>
         </div>
@@ -92,7 +105,7 @@
             <li class="nightmode">
               <a href="javascript:void(0)"
                 id="nightmode">
-                <span title="Night mode"
+                <span title="Dark mode"
                   class="nightmode-switch">
                   <i class="icon icon-nightmode"></i>
                 </span>
@@ -229,6 +242,7 @@
             <th>&empty; Kills / Match</th>
             <th>&empty; Deaths / Match</th>
             <th>K/D Ratio</th>
+            <th>PPK Ratio</th>
           </tr>
         </thead>
       </table>
@@ -336,6 +350,8 @@
     src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
   <script type="text/javascript"
     src="https://cdn.datatables.net/v/bs/dt-1.10.15/fh-3.1.2/datatables.min.js"></script>
+  <script type="text/javascript"
+    src="//cdn.datatables.net/plug-ins/1.10.15/sorting/percent.js"></script>
   <script type="text/javascript"
     src="js/sammy.min.js"></script>
   <script type="text/javascript"

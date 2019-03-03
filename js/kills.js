@@ -7,23 +7,26 @@ var _STATISTICS_VIEW = null;
 var _CURSOR = null;
 var _WORLDS = null;
 // var _API_BASE = "http://localhost:56965/api/";
-var _API_BASE = "api/";
+var _API_BASE = "https://api.kills.werdes.net/api/";
+// var _API_BASE = "api/";
 var _CURRENT_MATCH_ID;
 var _CURRENT_MATCH;
 var _SETTINGS = {
     "flattening": true,
-    "smoothing": false
+    "smoothing": false,
+    "darkmode": true,
+    "dismissed_objects": new Array()
 }
 
 $(function () {
     setView(ENUM_VIEW.NONE);
+    loadSettings();
 
-    checkNightmode();
+    checkDarkmode();
     new Clipboard('#copy-shortlink');
     setCurrentMatchlistMainMenu();
     loadMessages();
     checkTips();
-    loadSettings();
 
     var oApp = $.sammy(function () {
         this.get('#/matches/current/', function (context) {
@@ -69,18 +72,22 @@ function loadSettings() {
     var cookie = $.cookie('settings');
     if (cookie == undefined || cookie == null) {
 
-        setSettingsCookie();
+        storeSettings();
         cookie = $.cookie('settings');;
     }
 
-    _SETTINGS = JSON.parse(cookie);
+    var oSettings = JSON.parse(cookie);
+    _SETTINGS.darkmode = oSettings.darkmode != undefined ? oSettings.darkmode : _SETTINGS.darkmode;
+    _SETTINGS.flattening = oSettings.flattening != undefined ? oSettings.flattening : _SETTINGS.flattening;
+    _SETTINGS.smoothing = oSettings.smoothing != undefined ? oSettings.smoothing : _SETTINGS.smoothing;
+    _SETTINGS.dismissed_objects = oSettings.dismissed_objects != undefined ? oSettings.dismissed_objects : _SETTINGS.dismissed_objects;
 
     $('.grp-options li.checkable > a').each(function () {
         $(this).find(".glyphicon").css("opacity", _SETTINGS[$(this).attr("data-target")] ? 1 : 0);
     });
 }
 
-function setSettingsCookie() {
+function storeSettings() {
     $.cookie('settings', JSON.stringify(_SETTINGS), {
         expires: 365
     });
@@ -120,18 +127,26 @@ $('.nightmode-switch').click(function () {
 });
 
 
-function checkNightmode() {
-    var cNightModeCookie = $.cookie('nightmode');
-    if (cNightModeCookie == undefined || cNightModeCookie == null) {
-        $.cookie('nightmode', 'false', {
-            expires: 365
-        });
-        cNightModeCookie = $.cookie('nightmode');;
-    }
-    if (cNightModeCookie == 'false') {
-        $('head link[rel="stylesheet"][href="css/nightmode.min.css"]').remove();
+function checkDarkmode() {
+    var bDarkmode = _SETTINGS['darkmode'];
+    var cCurrentCssFile = $('link[name="bootstrap"]').attr('href');
+
+    if (bDarkmode) {
+        if (!cCurrentCssFile.includes('.dark.')) {
+            $('link[name="bootstrap"]').attr('href', 'css/bootstrap/bootstrap.dark.min.css');
+            //$('head').append('<link rel="stylesheet" type="text/css" href="css/darkmode.min.css">');
+        }
+
+        $('body').addClass("darkmode");
+        $('body').removeClass("lightmode");
     } else {
-        $('head').append('<link rel="stylesheet" type="text/css" href="css/nightmode.min.css">');
+        if (cCurrentCssFile.includes('.dark.')) {
+            $('link[name="bootstrap"]').attr('href', 'css/bootstrap/bootstrap.min.css');
+            //$('head link[rel="stylesheet"][href="css/darkmode.min.css"]').remove();
+        }
+
+        $('body').removeClass("darkmode");
+        $('body').addClass("lightmode");
     }
 }
 
@@ -140,25 +155,21 @@ function checkTips() {
 }
 
 function checkCopyStatsTip() {
-    var oCookie = $.cookie('tip_copystats');
-    if (oCookie != undefined && oCookie != null) {
+    if (_SETTINGS.dismissed_objects.includes("tip_copystats")) {
         $('#information-addon-copystats').addClass("hidden");
     }
 }
 
 function toggleNightmode() {
-    var cNightModeCookie = $.cookie('nightmode');
-    if (cNightModeCookie == 'false') {
-        $.cookie('nightmode', 'true', {
-            expires: 365
-        });
-    } else {
-        $.cookie('nightmode', 'false', {
-            expires: 365
-        });
-    }
+    var bDarkmode = _SETTINGS['darkmode'];
 
-    checkNightmode();
+    if (!bDarkmode) {
+        _SETTINGS['darkmode'] = true;
+    } else {
+        _SETTINGS['darkmode'] = false;
+    }
+    storeSettings();
+    checkDarkmode();
 };
 
 function setView(nView) {
@@ -205,9 +216,9 @@ function getMaps(aWorlds) {
     return aMaps;
 }
 
-function getMapColors() {
+function getMapClasses() {
     var aMaps = new Array();
-    aMaps[38] = '#333';
+    aMaps[38] = 'ebg';
     aMaps[94] = 'red';
     aMaps[95] = 'green';
     aMaps[96] = 'blue';
@@ -274,7 +285,11 @@ function setWorldRanking() {
                 ],
                 "paging": false,
                 "info": false,
-                "searching": true
+                "searching": true,
+                "columnDefs": [{
+                    type: 'percent',
+                    targets: 7
+                }]
             });
 
             for (var nWorldId in oData.responseJSON) {
@@ -298,7 +313,16 @@ function setWorldRanking() {
 
                     var cLeadingWorldName = '<i class="famfamfam-flag-' + getFlagShort(oWorld.arenanet_id) + '"></i> <b>' + oWorld.name + '</b>';
 
-                    m_oDataTableRanking.row.add([cLeadingWorldName + cPartners, oLinking.matchcount.toString(), oLinking.kills.toThousandSeparator(), oLinking.deaths.toThousandSeparator(), (oLinking.kills / oLinking.matchcount).toFixed(2).toString(), (oLinking.deaths / oLinking.matchcount).toFixed(2).toString(), getKdr(oLinking.kills, oLinking.deaths)]).draw(false);
+                    m_oDataTableRanking.row.add([
+                        cLeadingWorldName + cPartners,
+                        oLinking.matchcount.toString(),
+                        oLinking.kills.toThousandSeparator(),
+                        oLinking.deaths.toThousandSeparator(),
+                        (oLinking.kills / oLinking.matchcount).toFixed(2).toString(),
+                        (oLinking.deaths / oLinking.matchcount).toFixed(2).toString(),
+                        getKdr(oLinking.kills, oLinking.deaths),
+                        oLinking.score > 0 ? ((oLinking.kills * oLinking.ppk_value / oLinking.score * 100).toFixed(2)) + "%" : "n/a"
+                    ]).draw(false);
                 }
 
             }
@@ -593,7 +617,7 @@ $('.checkable > a').click(function () {
     $(this).find('.glyphicon').css('opacity', value ? 1 : 0);
 
     $(this).attr("data-value", value);
-    setSettingsCookie();
+    storeSettings();
     setSpecificMatch(_CURRENT_MATCH_ID);
 });
 
@@ -681,7 +705,6 @@ function setMatch(cMatchId) {
                 max: nMax + 100
             });
 
-
             for (var cSeriesKey in oMatch.series) {
                 setSeries(oMatch.series[cSeriesKey], aWorlds, aMaps, i, "Kills");
                 i++;
@@ -695,7 +718,7 @@ function setMatch(cMatchId) {
             _CURRENT_MATCH_ID = cMatchId;
 
             if (oMatch.flattened || oMatch.smoothed) {
-                setMessage("Due to issues with the <strong>Guild Wars 2 API</strong> the data of this match has been flattened to be more precise.<br />Please note, that this has altered the timeline of when kills occured. The kill and death counts are correct. I know it's not pretty, but that's as much as i can do 🔥.", "warning");
+                setMessage("Due to the <strong>Guild Wars 2 API</strong>'s timing issues the data of this match has been flattened to be more precise.<br />Please note, that this has altered the timeline of when kills occured, while the kill and death counts remain correct. I know it's not pretty, but that's as much as i can do 🔥.", "warning");
             }
 
             //Statistik
@@ -802,9 +825,8 @@ $('#reload-chart').click(function () {
 
 $('#button-close-tip-copystats').click(function () {
     $('#information-addon-copystats').addClass("hidden");
-    $.cookie('tip_copystats', 'set', {
-        expires: 365 * 1000
-    });
+    _SETTINGS.dismissed_objects.push("tip_copystats");
+    storeSettings();
 });
 
 function setSeries(oSeries, aWorlds, aMaps, i, cDeathsKills) {
@@ -849,7 +871,7 @@ function setSeries(oSeries, aWorlds, aMaps, i, cDeathsKills) {
 function initMatchStatistics(oMatch) {
     var cContainerId = '#match-statistics-container';
     var aWorlds = new Array();
-    var aWorldColors = getMapColors();
+    var aWorldClasses = getMapClasses();
     var nWidthKillsDeaths = oMatch.has_score_data ? 6 : 8;
     var nWidthInfo = oMatch.has_score_data ? 4 : 2;
     var cHasScoreData = oMatch.has_score_data ? " has-score-data" : "";
@@ -895,9 +917,9 @@ function initMatchStatistics(oMatch) {
 
 
 
-            cContainerContent += '<div class="row kd" data-world="' + oWorld.world_id + '" data-map-id="' + cMapId + '" data-color="' + aWorldColors[oMap.map_id] + '" data-world-name="' + oWorld.world_name + '" data-map-name="' + cMapName + '">';
+            cContainerContent += '<div class="row kd" data-world="' + oWorld.world_id + '" data-map-id="' + cMapId + '" data-color="' + aWorldClasses[oMap.map_id] + '" data-world-name="' + oWorld.world_name + '" data-map-name="' + cMapName + '">';
 
-            cContainerContent += '<div class="col-md-2 col-world-name" style="color: ' + aWorldColors[oMap.map_id] + '">' + cMapName + '</div><div class="col-md-' + nWidthKillsDeaths + ' col-world-kills"><div class="progress"><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' kills no-nightmode" title="kills" role="progressbar" style="width: 50%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, false) + ';"  ></div><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' deaths no-nightmode" style="width: 50%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, true) + ';" title="deaths"></div></div></div><div class="col-md-' + nWidthInfo + ' ' + cMapId + ' ' + oWorld.world_id + ' ' + cHasScoreData + ' kdr col-kdr"></div></div>';
+            cContainerContent += '<div class="col-md-2 col-map-name map-name-' + aWorldClasses[oMap.map_id] + '">' + cMapName + '</div><div class="col-md-' + nWidthKillsDeaths + ' col-world-kills"><div class="progress"><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' kills no-nightmode" title="kills" role="progressbar" style="width: 50%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, false) + ';"  ></div><div class="progress-bar ' + cMapId + ' ' + oWorld.world_id + ' deaths no-nightmode" style="width: 50%; background-color: ' + getMapChartColor(oWorld.color, oMap.map_id, true) + ';" title="deaths"></div></div></div><div class="col-md-' + nWidthInfo + ' ' + cMapId + ' ' + oWorld.world_id + ' ' + cHasScoreData + ' kdr col-kdr"></div></div>';
         }
 
         cContainerContent += '<div class="row kd-total" data-world="' + oWorld.world_id + '"><div class="col-md-2 col-world-name"><strong>Total</strong></div><div class="col-md-' + nWidthKillsDeaths + ' col-world-kills"><div class="progress"><div class="progress-bar kills total ' + oWorld.world_id + '  no-nightmode" title="kills" role="progressbar" style="width: 50%; background-color: ' + shadeColor(colorNameToHex(oWorld.color), 0.3) + ';"  ></div><div class="progress-bar ' + oWorld.world_id + ' total deaths no-nightmode" style="width: 50%; background-color: ' + shadeColor(colorNameToHex(oWorld.color), -0.3) + ';" title="deaths"></div></div></div><div class="col-md-' + nWidthInfo + ' col-kdr' + cHasScoreData + '"><strong><span class="kdr total ' + oWorld.world_id + ' "></span></strong></div></div>';
@@ -1005,21 +1027,30 @@ function getClipboard(oMatch, nWorldId, nTimeslotId) {
 
     var nFullDeaths = 0;
     var nFullKills = 0;
-    var aWorldColors = getMapColors();
+    var nFullScore = 0;
+    var aWorldClasses = getMapClasses();
     var aMaps = new Array();
 
     for (var nMapId in oWorld.maps) {
         var oMap = oWorld.maps[nMapId];
         var nKills = parseInt(oMap.kills);
         var nDeaths = parseInt(oMap.deaths);
+
         var cMap = oMap.map_id == "38" ? "EBG" : "";
-        var cColor = aWorldColors[oMap.map_id];
+        var cColor = aWorldClasses[oMap.map_id];
 
         nFullDeaths += nDeaths;
         nFullKills += nKills;
+        nFullScore += oMap.score;
 
-        var cOutput = getKdr(nKills, nDeaths) + ' kd (' + nKills + '/' + nDeaths + ') @ ';
-        if (cColor.indexOf('#') == -1) {
+        var cPpkAddition = "";
+        if (_CURRENT_MATCH.has_score_data) {
+            var nPpk = oMap.score > 0 ? ((oMap.kills * _CURRENT_MATCH.ppk_value) / oMap.score * 100) : 0;
+            cPpkAddition += ', ' + nPpk.toFixed(0) + '%';
+        }
+
+        var cOutput = getKdr(nKills, nDeaths) + ' kd (' + nKills + '/' + nDeaths + cPpkAddition + ') @ ';
+        if (cColor != "ebg") {
             cOutput += cColor.toProperCase();
         }
         cOutput += cMap;
@@ -1027,10 +1058,19 @@ function getClipboard(oMatch, nWorldId, nTimeslotId) {
         aMaps.push(cOutput);
     }
 
-    var cWorldOverall = oWorld.world_name.split('[')[0].trim() + cTimestamp + ": " + getKdr(nFullKills, nFullDeaths) + ' kd (' + nFullKills + '/' + nFullDeaths + ') | ';
+
+    var cPpkAddition = "";
+    if (_CURRENT_MATCH.has_score_data) {
+        var nPpk = nFullScore > 0 ? ((nFullKills * _CURRENT_MATCH.ppk_value) / nFullScore * 100) : 0;
+        cPpkAddition += ', ' + nPpk.toFixed(0) + '% PPK';
+    }
 
 
-    return cWorldOverall + aMaps.join(' | ') + ' - updated ' + moment.utc(oMatch.last_update).local().fromNow();
+    var cWorldOverall = oWorld.world_name.split('[')[0].trim() + cTimestamp + ": " + getKdr(nFullKills, nFullDeaths) + ' kd (' + nFullKills + '/' + nFullDeaths + cPpkAddition + ') | ';
+
+
+
+    return cWorldOverall + aMaps.join(' | ') + ' - ' + moment.utc(oMatch.last_update).local().fromNow();
 }
 
 

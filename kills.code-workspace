@@ -1,8 +1,48 @@
 {
-	"folders": [
-		{
-			"path": "."
+	"folders": [{
+		"path": "."
+	}],
+	"settings": {
+		"files.exclude": {
+			"**/.git": true,
+			"**/.svn": true,
+			"**/.hg": true,
+			"**/.DS_Store": true
+		},
+		"editor.formatOnSave": true,
+		"liveSassCompile.settings.formats": [{
+			"format": "compressed",
+			"extensionName": ".min.css",
+			"savePath": null
+		}],
+		"deploy.reloaded": {
+			"targets": [{
+				"type": "ftp",
+				"name": "deploy",
+				"description": "deploy",
+				"dir": "/kills/",
+				"host": "81.20.136.134",
+				"port": 22,
+				"user": "marius",
+				"password": "B0hRHTkV6yuz"
+			}],
+			"packages": [{
+				"name": "production-package",
+				"files": [
+					"/*.html",
+					"/js/*.min.js",
+					"/css/*.min.css",
+					"/css/*.map",
+					"/css/bootstrap/*.min.css",
+					"/css/bootstrap/*.map",
+					"/fonts/*.*",
+					"/img/*.*",
+					"/*.ico"
+				],
+				"exclude": [
+					"**/*.xcf"
+				]
+			}]
 		}
-	],
-	"settings": {}
+	}
 }
