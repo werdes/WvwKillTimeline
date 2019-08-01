@@ -17,19 +17,27 @@
 		}],
 		"deploy.reloaded": {
 			"targets": [{
-				"type": "ftp",
-				"name": "deploy",
-				"description": "deploy",
-				"dir": "/kills/",
-				"host": "81.20.136.134",
-				"port": 22,
-				"user": "marius",
-				"password": "B0hRHTkV6yuz"
-			}],
+					"type": "ftp",
+					"name": "deploy",
+					"description": "deploy",
+					"dir": "/kills/",
+					"host": "81.20.136.134",
+					"port": 22,
+					"user": "marius",
+					"password": "B0hRHTkV6yuz"
+				},
+				{
+					"type": "local",
+					"name": "local deploy",
+					"description": "F:\\Files\\deploy\\kills",
+					"dir": "F:\\Files\\deploy\\kills"
+				}
+			],
 			"packages": [{
 				"name": "production-package",
 				"files": [
 					"/*.html",
+					"/*.php",
 					"/js/*.min.js",
 					"/css/*.min.css",
 					"/css/*.map",

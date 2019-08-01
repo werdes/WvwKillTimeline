@@ -14,8 +14,17 @@ var _CURRENT_MATCH;
 var _SETTINGS = {
     "flattening": true,
     "smoothing": false,
-    "darkmode": true,
+    "darkmode": false,
     "dismissed_objects": new Array()
+}
+
+var ENUM_VIEW = {
+    NONE: 0,
+    MATCHLIST: 1,
+    MATCH: 2,
+    WORLD_RANKING: 3,
+    LEGAL: 4,
+    TIMEZONES: 5
 }
 
 $(function () {
@@ -38,6 +47,9 @@ $(function () {
         this.get('#/worldranking/', function (context) {
             setWorldRanking();
         });
+        this.get('#/timezones/', function (context) {
+            setTimezones();
+        })
         this.get('#/matches/:slug/', function (context) {
             var cSlug = this.params['slug'];
             resolveSlug(cSlug, function (oSlug) {
@@ -114,14 +126,6 @@ function handlePageSwitch(targetUri) {
     $('.branding[href="' + targetUri + '"], ul.nav-pills>li>a[href="' + targetUri + '"]').parent().addClass('active');
 }
 
-var ENUM_VIEW = {
-    NONE: 0,
-    MATCHLIST: 1,
-    MATCH: 2,
-    WORLD_RANKING: 3,
-    LEGAL: 4
-}
-
 $('.nightmode-switch').click(function () {
     toggleNightmode();
 });
@@ -152,11 +156,18 @@ function checkDarkmode() {
 
 function checkTips() {
     checkCopyStatsTip();
+    checkTimezonesTip();
 }
 
 function checkCopyStatsTip() {
-    if (_SETTINGS.dismissed_objects.includes("tip_copystats")) {
-        $('#information-addon-copystats').addClass("hidden");
+    if (!_SETTINGS.dismissed_objects.includes("tip_copystats")) {
+        $('#information-addon-copystats').removeClass("hidden");
+    }
+}
+
+function checkTimezonesTip() {
+    if (!_SETTINGS.dismissed_objects.includes("tip_timezones")) {
+        $('#information-addon-timezones').removeClass("hidden");
     }
 }
 
@@ -177,6 +188,7 @@ function setView(nView) {
     $('#match').addClass('hidden');
     $('#world-ranking').addClass('hidden');
     $('#legal-notice').addClass('hidden');
+    $('#timezones').addClass('hidden');
     $('#matchlist-search').val('');
 
     $('div.header').addClass('disabled');
@@ -193,17 +205,16 @@ function setView(nView) {
     } else
     if (nView == ENUM_VIEW.MATCH) {
         $('#match').removeClass('hidden');
-        $('div.header').removeClass('disabled');
     } else if (nView == ENUM_VIEW.MATCHLIST) {
         $('#matchlist').removeClass('hidden');
-        $('div.header').removeClass('disabled');
     } else if (nView == ENUM_VIEW.WORLD_RANKING) {
         $('#world-ranking').removeClass('hidden');
-        $('div.header').removeClass('disabled');
     } else if (nView == ENUM_VIEW.LEGAL) {
         $('#legal-notice').removeClass('hidden');
-        $('div.header').removeClass('disabled');
+    } else if (nView == ENUM_VIEW.TIMEZONES) {
+        $('#timezones').removeClass('hidden');
     }
+    $('div.header').removeClass('disabled');
 }
 
 function getMaps(aWorlds) {
@@ -272,6 +283,114 @@ function setSpecificMatch(cRequestedMatchId) {
     setMatch(cRequestedMatchId);
 }
 
+function setTimezones() {
+    setView(ENUM_VIEW.NONE);
+    setLoading(true);
+    $.ajax({
+        url: _API_BASE + "timezones?ts=" + $.now(),
+        dataType: "json",
+        complete: function (oData) {
+
+            var cContent = '<ul class="media-list">';
+
+            for (var nMatchIdx in oData.responseJSON.matches) {
+                // oData.responseJSON.matches.forEach(function (oMatch, nMatchIdx) {
+                var oMatch = oData.responseJSON.matches[nMatchIdx];
+                var cRegion = oMatch.current_match.arenanet_id.split('-')[0] == "1" ? "NA" : "EU";
+                var cTier = oMatch.current_match.arenanet_id.split('-')[1];
+
+                cContent += '<li class="media"><div class="pull-left"><div class="timezones-eyecatcher media-object"><span class="timezones-region region-' + cRegion.toLowerCase() + '">' + cRegion + '</span><span class="timezones-tier">Tier ' + cTier + '</span></div></div>  <div class="media-body">';
+
+                for (var cColor in oMatch.worlds) {
+                    var oWorld = oMatch.worlds[cColor];
+                    cContent += '<div class="row">';
+                    cContent += '<div class="col-md-4"><i class="famfamfam-flag-' + getFlagShort(oWorld.linking.host_world.arenanet_id) + '"></i> <strong>' + oWorld.linking.host_world.name + '</strong>';
+
+                    for (var nPartnerWorldIdx in oWorld.linking.partner_worlds) {
+                        var oPartnerWorld = oWorld.linking.partner_worlds[nPartnerWorldIdx];
+                        cContent += ', <i class="famfamfam-flag-' + getFlagShort(oPartnerWorld.arenanet_id) + '"></i> ' + oPartnerWorld.name;
+                    }
+                    var nTotalSeconds = 60 * 60 * 24;
+                    var nStartSeconds = moment.utc(oWorld.timezone.start_time, 'HH:mm:ss').local().diff(moment().startOf('day'), 'seconds');
+
+                    var nEndSeconds = moment.utc(oWorld.timezone.end_time, 'HH:mm:ss').local().diff(moment().startOf('day'), 'seconds');
+
+                    if (nStartSeconds < 0) {
+                        nStartSeconds = moment.utc(oWorld.timezone.start_time, 'HH:mm:ss').local().diff(moment().subtract(1, "days").startOf('day'), 'seconds');
+                    }
+                    if (nEndSeconds < 0) {
+                        var nEndSeconds = moment.utc(oWorld.timezone.end_time, 'HH:mm:ss').local().diff(moment().subtract(1, "days").startOf('day'), 'seconds');
+
+                    }
+
+                    var nEarlyMorningSeconds = 0;
+
+                    if (nEndSeconds > nTotalSeconds) {
+                        nEarlyMorningSeconds = nEndSeconds - nTotalSeconds;
+                        nEndSeconds = nTotalSeconds;
+                    }
+
+
+                    var nPercentageStart = (nStartSeconds - nEarlyMorningSeconds) / nTotalSeconds * 100;
+                    var nPercentageRange = (nEndSeconds - nStartSeconds) / nTotalSeconds * 100;
+                    var nPercentageEarlyMorning = nEarlyMorningSeconds / nTotalSeconds * 100;
+                    var nPercentageEnd = 100 - nPercentageEarlyMorning - nPercentageStart - nPercentageRange;
+
+                    var oDuration = moment.duration(nEndSeconds - nStartSeconds + nEarlyMorningSeconds + 1, "seconds");
+                    var cDuration = oDuration.hours() + "h " + (oDuration.minutes() > 0 ? oDuration.minutes() + "m" : "");
+
+
+
+                    var cColorClass = cColor == "red" ? "progress-bar-danger" : (cColor == "green" ? "progress-bar-success" : "");
+
+
+
+                    console.log(nStartSeconds + "/" + nEndSeconds + ":" + nPercentageStart + '/' + nPercentageRange);
+
+                    var cTooltip = 'Primetime: ' + moment.utc(oWorld.timezone.start_time, 'HH:mm:ss').local().format("HH:mm") + ' to ' + moment.utc(oWorld.timezone.end_time, 'HH:mm:ss').local().format("HH:mm") + '\r\n' + oWorld.timezone.kill_percentage.toFixed(1) + '% of daily kills \r\n' + oWorld.timezone.death_percentage.toFixed(1) + '% of daily deaths';
+
+                    var cMedals = "";
+                    if (oWorld.timezone.activity_rank_in_region == 1) {
+                        cMedals = '<span data-container="body" data-toggle="tooltip" data-placement="top" title="Most active primetime in ' + cRegion + ' with ' + oWorld.timezone.activity_per_minute.toFixed(2) + ' kills/deaths per minute" ><i class="icon icon-badge-gold-small"></i> Top Activity in ' + cRegion + '</span>';
+                    }
+                    if (oWorld.timezone.kdr_rank_in_region == 1) {
+                        cMedals += '<span data-container="body" data-toggle="tooltip" data-placement="top" title="Strongest KDR primetime in ' + cRegion + ': ' + getKdr(oWorld.timezone.kills, oWorld.timezone.deaths) + ' KDR" ><i class="icon icon-badge-kdr-small"></i> Top KDR in ' + cRegion + '</span>';
+                    }
+
+                    var cContentBeforeRange = "";
+                    var cContentAfterRange = "";
+
+                    if (nPercentageStart > nPercentageEnd) {
+                        cContentBeforeRange = cMedals;
+                    } else {
+                        cContentAfterRange = cMedals;
+                    }
+
+                    cContent += '</div><div class="col-md-8"><div class="progress"><div class="progress-bar-early progress-bar ' + cColorClass + '" role="progressbar" style="width:' + nPercentageEarlyMorning + '%;"></div><div class="progress-bar progress-bar-transparent progressbar-before-range" role="progressbar" style="width:' + nPercentageStart + '%;">' + cContentBeforeRange + '</div><div class="progress-bar progress-bar-timezone ' + cColorClass + '" data-container="body"  role="progressbar" data-toggle="tooltip" data-placement="top" title="' + cTooltip + '" style="width:' + nPercentageRange + '%;">' + cDuration + '</div> <div class="progress-bar progress-bar-transparent progressbar-after-range" role="progressbar" style="width:' + nPercentageEnd + '%;">' + cContentAfterRange + '</div></div></div>';
+
+                    // /row
+                    cContent += '</div>';
+                }
+
+
+                cContent += '</div></li>';
+            };
+
+            cContent += '</ul>';
+            $('#timezones-container').html(cContent);
+            $('#timezones-last-updated').html('Last updated at ' + moment.utc(oData.responseJSON.last_update).local().format("HH:mm:ss") + " (" + moment.utc(oData.responseJSON.last_update).local().fromNow() + ')');
+            $('#timezones-max-timeslots').text(oData.responseJSON.count_timeslots_max);
+            $('[data-toggle="tooltip"]').tooltip()
+            setView(ENUM_VIEW.TIMEZONES);
+            setLoading(false);
+        },
+        error: function (oXhr, cStatus, cError) {
+            setMessage('<b>' + cStatus + '</b><br />' + cError, 'danger');
+        }
+    });
+}
+
+
 function setWorldRanking() {
     setView(ENUM_VIEW.NONE);
     setLoading(true);
@@ -303,7 +422,7 @@ function setWorldRanking() {
                         if (i == 0) {
                             cPartners += ', ';
                         }
-                        cPartners += oLinking.partners[nPartner].name;
+                        cPartners += '<br /><i class="famfamfam-flag-' + getFlagShort(oLinking.partners[nPartner].arenanet_id) + '"></i> ' + oLinking.partners[nPartner].name + '';
                         i++;
 
                         if (i < oLinking.partners.length) {
@@ -499,7 +618,7 @@ function displayMatchlistMatchContainer(cContainerId, cMatchId, oMatch) {
 
         if (oWorld.additional_worlds != null) {
             for (var cAdditionalWorldId in oWorld.additional_worlds) {
-                cContainer += ', ' + oWorld.additional_worlds[cAdditionalWorldId].name;
+                cContainer += ', <i class="famfamfam-flag-' + getFlagShort(oWorld.additional_worlds[cAdditionalWorldId].arenanet_id) + '"></i> ' + oWorld.additional_worlds[cAdditionalWorldId].name;
 
                 aSearchQuery.push(oWorld.additional_worlds[cAdditionalWorldId].name);
             }
@@ -826,6 +945,11 @@ $('#reload-chart').click(function () {
 $('#button-close-tip-copystats').click(function () {
     $('#information-addon-copystats').addClass("hidden");
     _SETTINGS.dismissed_objects.push("tip_copystats");
+    storeSettings();
+});
+$('#button-close-tip-timezones').click(function () {
+    $('#information-addon-timezones').addClass("hidden");
+    _SETTINGS.dismissed_objects.push("tip_timezones");
     storeSettings();
 });
 

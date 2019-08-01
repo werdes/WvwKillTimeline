@@ -6,6 +6,7 @@ $color-eu: #003399;
 $color-na: #B22234;
 $color-eu-darkmode: lighten($color-eu, 25%);
 $color-na-darkmode: lighten($color-na, 5%);
+
 html {
     /*Fix scrollbar */
     margin-left: calc(100vw - 100%);
@@ -14,25 +15,40 @@ html {
 body {
     padding-top: 20px;
     padding-bottom: 20px;
+
     &.darkmode {
+
         & table.dataTable.fixedHeader-floating,
         & table.dataTable.fixedHeader-locked {
             background-color: #000 !important;
         }
+
         & .highcharts-scrollbar-track {
             fill: #333;
             stroke: #666;
         }
+
         & .highcharts-scrollbar-button {
             fill: #111;
             stroke: #666;
         }
+
         & .highcharts-scrollbar-thumb {
             fill: #111;
             stroke: #666 !important;
         }
+
+        & ul.nav-pills>li>a,
+        & .text-muted.branding {
+            color: #fff;
+        }
     }
 }
+
+.tooltip-inner {
+    white-space: pre-wrap;
+}
+
 
 a {
     color: $highlight-color;
@@ -62,25 +78,24 @@ h2 {
 .header {
     padding-bottom: 20px;
     border-bottom: 1px solid #e5e5e5;
+
     body.darkmode & {
         border-bottom: 1px solid #444 !important;
     }
-}
 
-/* Make the masthead heading the same height as the navigation */
-
-.header h3 {
-    margin-top: 0;
-    margin-bottom: 0;
-    line-height: 40px;
+    & h3 {
+        margin-top: 0;
+        margin-bottom: 0;
+        line-height: 40px;
+    }
 }
 
 /* Custom page footer */
-
 .footer {
     padding-top: 19px;
     color: #777;
     border-top: 1px solid #e5e5e5;
+
     body.darkmode & {
         border-top: 1px solid #444 !important;
     }
@@ -141,6 +156,7 @@ h2 {
 /* Responsive: Portrait tablets and up */
 
 @media screen and (min-width: 1023px) {
+
     /* Remove the padding we set earlier */
     .header,
     .marketing,
@@ -148,14 +164,17 @@ h2 {
         padding-right: 0;
         padding-left: 0;
     }
+
     /* Space out the masthead */
     .header {
         margin-bottom: 30px;
     }
+
     /* Remove the bottom border on the jumbotron for visual effect */
     .jumbotron {
         border-bottom: 0;
     }
+
     div#chart-container,
     div#main-chart-container {
         width: 970px;
@@ -163,11 +182,13 @@ h2 {
 }
 
 @media screen and (min-width: 1279px) {
+
     div#chart-container,
     div#main-chart-container {
         width: 1140px;
     }
 }
+
 
 div#chart-container,
 div#main-chart-container {
@@ -176,24 +197,35 @@ div#main-chart-container {
     position: relative;
 }
 
-div#chart-container>div.information-addon {
-    width: 200px;
-    position: absolute;
-    right: -211px;
-}
+div.information-addon {
 
-div#chart-container>div.information-addon>div.inner {
-    padding: 5px 8px;
-}
+    div#chart-container>& {
+        width: 200px;
+        position: absolute;
+        right: -211px;
+    }
 
-div#chart-container>div.information-addon>div.inner>ul {
-    margin-top: 2px;
-}
+    &#information-addon-timezones {
+        width: 200px;
+        position: absolute;
+        left: -20px;
+        top: 45px;
+    }
 
-div#chart-container>div.information-addon>div.inner>ul>li {
-    display: block;
-    position: relative;
-    left: -25px;
+    & div.inner {
+        padding: 5px 8px;
+
+        &>ul {
+            margin-top: 2px;
+
+            &>li {
+                display: block;
+                position: relative;
+                left: -25px;
+            }
+        }
+
+    }
 }
 
 div#matchlist-container {
@@ -217,6 +249,7 @@ div.chart-backgrounds div.chart-background-kills {
     opacity: .3;
     text-transform: uppercase;
     padding: 15px;
+
     body.darkmode & {
         color: #aaa !important;
     }
@@ -241,7 +274,12 @@ div.chart-backgrounds div.chart-background-deaths p {
     bottom: 0px;
 }
 
-div.matchlist-eyecatcher {
+div#timezones>div.timezones-infos {
+    margin-bottom: 15px;
+}
+
+div.matchlist-eyecatcher,
+div.timezones-eyecatcher {
     min-width: 90px;
     height: 100%;
     display: inline-block;
@@ -271,6 +309,26 @@ div.matchlist-stat-container>div.progress>div.progress-bar {
     line-height: 1;
 }
 
+.progress-bar-transparent {
+    background-color: transparent !important;
+    color: #000 !important;
+
+    &.progressbar-before-range {
+        text-align: right;
+        padding-right: 5px;
+    }
+
+    &.progressbar-after-range {
+        text-align: left;
+        padding-left: 5px;
+    }
+}
+
+.progress-bar-early,
+.progress-bar-timezone {
+    border-radius: 4px;
+}
+
 div.matchlist-eyecatcher span.matchlist-region {
     font-size: 30pt;
     font-weight: bold;
@@ -280,14 +338,45 @@ div.matchlist-eyecatcher span.matchlist-region {
     display: block;
 }
 
-div.matchlist-eyecatcher span.matchlist-tier {
+div.matchlist-eyecatcher span.matchlist-tier,
+div.timezones-eyecatcher span.timezones-tier {
     font-size: 13pt;
     font-weight: bold;
-    color: #ddd;
+    color: #999;
     margin-top: -16px;
     text-align: right;
     padding-right: 15px;
     display: block;
+}
+
+span.timezones-region {
+
+    font-size: 30pt;
+    font-weight: bold;
+    // opacity: .5;
+    text-align: right;
+    padding-right: 15px;
+    display: block;
+
+    &.region-eu {
+        body.darkmode & {
+            color: $color-eu-darkmode;
+        }
+
+        body.lightmode & {
+            color: $color-eu;
+        }
+    }
+
+    &.region-na {
+        body.darkmode & {
+            color: $color-na-darkmode;
+        }
+
+        body.lightmode & {
+            color: $color-na;
+        }
+    }
 }
 
 span.label-ppk-percentage {
@@ -308,20 +397,24 @@ div#matchlist-container>div.list-group-item {
             border-right: rgba($color-eu, .6) 5px solid;
             border-left: rgba($color-eu, .6) 5px solid;
         }
+
         & div.matchlist-eyecatcher span.matchlist-region.region-eu {
             body.darkmode & {
                 color: $color-eu-darkmode;
             }
+
             body.lightmode & {
                 color: $color-eu;
             }
         }
     }
+
     &.na {
         &:hover {
             border-right: rgba($color-na, .6) 5px solid;
             border-left: rgba($color-na, .6) 5px solid;
         }
+
         & div.matchlist-eyecatcher span.matchlist-region.region-na {
             color: $color-na;
         }
@@ -357,9 +450,11 @@ a.match-container {
     body.darkmode & {
         color: #ddd;
     }
+
     body.lightmode & {
         color: #333;
     }
+
     text-decoration: none;
     display: block;
     width: 100%;
@@ -397,16 +492,20 @@ div.col-map-name {
         body.darkmode & {
             color: #bbb;
         }
+
         body.lightmode & {
             color: #333;
         }
     }
+
     &.map-name-red {
         color: red;
     }
+
     &.map-name-green {
         color: green;
     }
+
     &.map-name-blue {
         color: blue;
     }
@@ -591,6 +690,14 @@ span.context-header {
     min-height: 250px;
 }
 
+#loading-container>h3 {
+    text-decoration: none;
+    font-family: 'Cinzel', serif !important;
+    font-size: 1.6em;
+    color: $highlight-color;
+    text-align: center;
+}
+
 #loading-container>img {
     width: 150px;
     display: block;
@@ -604,6 +711,7 @@ span.context-header {
     from {
         transform: translateY(0px);
     }
+
     to {
         transform: translateY(-15px);
     }
@@ -613,6 +721,7 @@ span.context-header {
     from {
         transform: translateY(0px);
     }
+
     to {
         transform: translateY(-15px);
     }
@@ -638,21 +747,25 @@ span.context-header {
 }
 
 @-webkit-keyframes sk-bounce {
+
     0%,
     100% {
         -webkit-transform: scale(0.0)
     }
+
     50% {
         -webkit-transform: scale(1.0)
     }
 }
 
 @keyframes sk-bounce {
+
     0%,
     100% {
         transform: scale(0.0);
         -webkit-transform: scale(0.0);
     }
+
     50% {
         transform: scale(1.0);
         -webkit-transform: scale(1.0);
@@ -681,6 +794,20 @@ i.icon.icon-ranking {
     background-position: -120px 0px;
 }
 
+i.icon.icon-badge-gold-small {
+    width: 16px !important;
+    height: 16px !important;
+    background-position: -48px -24px;
+    vertical-align: middle;
+}
+
+i.icon.icon-badge-kdr-small {
+    width: 16px !important;
+    height: 16px !important;
+    background-position: -64px -24px;
+    vertical-align: middle;
+}
+
 i.icon.icon-archive {
     background-position: -72px 0px;
 }
@@ -689,63 +816,83 @@ i.icon.icon-current {
     background-position: -96px 0px;
 }
 
+i.icon.icon-timezone {
+    background-position: -192px 0px;
+}
+
+
 @media screen and (max-width: 1023px) {
     .header {
         padding-bottom: 25px !important;
         border-bottom-width: 0px;
     }
+
     .content {
         padding: 0 15px !important;
         max-width: 720px;
     }
+
     .matchlist-search {
         width: 100%;
     }
+
     .matchlist-tier,
     .matchlist-region {
         display: inline !important;
         font-size: 22pt !important;
     }
+
     .matchlist-stat-container {
         display: none;
     }
+
     .matchlist-world-kd {
         float: right;
     }
+
     div.matchlist-world-container {
         left: -9px !important;
     }
+
     div#chart-container {
         width: auto !important;
     }
+
     div.information-addon {
         display: none;
     }
+
     .get-shortlink,
     .reload-chart {
         padding: 2px 3px;
         font-size: 10pt;
         margin: 0 3px 10px 3px !important;
     }
+
     .grp-options>button {
         padding: 2px 3px;
         font-size: 10pt;
     }
+
     div.grp-options {
         margin: 0 3px 10px 3px !important;
     }
+
     .col-world-name {
         float: left;
         width: 20%;
     }
+
     .col-world-kills {
         float: right;
         width: 60%;
     }
+
     .col-kdr {
         padding: 0px;
         float: right;
     }
+
     .world-container {
         margin-bottom: 10px;
     }
