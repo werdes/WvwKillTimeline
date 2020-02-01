@@ -10,11 +10,10 @@ $color-na-darkmode: lighten($color-na, 5%);
 html {
     /*Fix scrollbar */
     margin-left: calc(100vw - 100%);
+    min-height: 100%;
 }
 
 body {
-    padding-top: 20px;
-    padding-bottom: 20px;
 
     &.darkmode {
 
@@ -40,9 +39,20 @@ body {
 
         & ul.nav-pills>li>a,
         & .text-muted.branding {
-            color: #fff;
+
+            color: rgba(255, 255, 255, .7);
+
+            &:hover {
+                color: #fff;
+            }
         }
     }
+}
+
+div.page-content {
+    padding-top: 20px;
+    padding-bottom: 20px;
+    min-height: 100%;
 }
 
 .tooltip-inner {
@@ -55,7 +65,8 @@ a {
     text-decoration: none;
 }
 
-a:hover {
+a:hover,
+a:focus {
     color: $highlight-color-light;
 }
 
@@ -100,6 +111,7 @@ h2 {
         border-top: 1px solid #444 !important;
     }
 }
+
 
 /* Customize container */
 
@@ -157,6 +169,30 @@ h2 {
 
 @media screen and (min-width: 1023px) {
 
+    body {
+        &.lightmode {
+            background-image: linear-gradient(rgba(255, 255, 255, .7), rgba(255, 255, 255, .9)), url(../img/bg_lightmode.jpg);
+            background-attachment: fixed;
+            background-size: cover;
+            background-repeat: no-repeat;
+
+            &>div.page-content {
+                background-color: #fff;
+            }
+        }
+
+        &.darkmode {
+            background-image: linear-gradient(rgba(0, 0, 0, .7), rgba(0, 0, 0, .9)), url(../img/bg_darkmode.jpg);
+            background-attachment: fixed;
+            background-size: cover;
+            background-repeat: no-repeat;
+
+            &>div.page-content {
+                background-color: #111;
+            }
+        }
+    }
+
     /* Remove the padding we set earlier */
     .header,
     .marketing,
@@ -210,6 +246,7 @@ div.information-addon {
         position: absolute;
         left: -20px;
         top: 45px;
+        z-index: 10;
     }
 
     & div.inner {
@@ -383,6 +420,12 @@ span.label-ppk-percentage {
     margin-left: 4px;
 }
 
+span.timezone-hint {
+    body.darkmode & {
+        color: rgba(255, 255, 255, .5);
+    }
+}
+
 div#matchlist-container>div.list-group-item {
     padding: 2px 15px 10px 15px;
 }
@@ -393,6 +436,7 @@ div#matchlist-container>div.list-group-item:hover {
 
 div#matchlist-container>div.list-group-item {
     &.eu {
+
         &:hover {
             border-right: rgba($color-eu, .6) 5px solid;
             border-left: rgba($color-eu, .6) 5px solid;
@@ -553,37 +597,53 @@ div#message-container {
     width: auto;
 }
 
-ul.nav-pills>li {
-    vertical-align: center;
-    padding: 10px;
-}
+ul.nav-pills {
+    & a {
+        cursor: pointer;
+    }
 
-ul.nav-pills a {
-    cursor: pointer;
-}
+    &>li {
+        vertical-align: center;
+        padding: 10px;
 
-ul.nav-pills>li>a {
-    min-height: 24px;
-    padding: 0;
-    line-height: 24px;
-    font-family: 'Roboto', sans-serif;
-    font-size: 1.12em;
-    font-weight: 300;
-}
+        &>a {
+            min-height: 24px;
+            padding: 0;
+            line-height: 24px;
+            font-family: 'Roboto', sans-serif;
+            font-size: 1.12em;
+            font-weight: 300;
 
-ul.nav-pills>li>a>i.icon {
-    margin-right: 2px;
-}
+            &>i.icon {
+                margin-right: 2px;
+            }
+        }
+    }
 
-ul.nav-pills>li.active,
-div.branding-container.active {
-    border-bottom: 3px solid $highlight-color;
-}
+    &>li.active {
 
-ul.nav-pills>li.active>a {
-    background-color: transparent !important;
-    font-weight: 400;
-    color: $highlight-color !important;
+        body.lightmode & {
+            border-bottom: 3px solid $highlight-color;
+
+            &>a {
+                background-color: transparent !important;
+                font-weight: 400;
+                color: $highlight-color !important;
+            }
+        }
+
+        body.darkmode & {
+            border-bottom: 3px solid #fff;
+
+            &>a {
+                background-color: transparent !important;
+                // font-weight: 600;
+
+                color: #fff !important;
+            }
+        }
+    }
+
 }
 
 a.branding,
@@ -591,6 +651,17 @@ a.branding:hover {
     text-decoration: none;
     font-family: 'Cinzel', serif !important;
     font-size: 2em;
+}
+
+div.branding-container.active {
+
+    body.darkmode & {
+        border-bottom: 3px solid #fff;
+    }
+
+    body.lightmode & {
+        border-bottom: 3px solid $highlight-color;
+    }
 }
 
 div.header.disabled {

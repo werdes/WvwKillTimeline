@@ -6,7 +6,7 @@ var m_bFlattening = true;
 var _STATISTICS_VIEW = null;
 var _CURSOR = null;
 var _WORLDS = null;
-// var _API_BASE = "http://localhost:56965/api/";
+// var _API_BASE = "http://localhost:63299/api/";
 var _API_BASE = "https://api.kills.werdes.net/api/";
 // var _API_BASE = "api/";
 var _CURRENT_MATCH_ID;
@@ -14,7 +14,7 @@ var _CURRENT_MATCH;
 var _SETTINGS = {
     "flattening": true,
     "smoothing": false,
-    "darkmode": false,
+    "darkmode": true,
     "dismissed_objects": new Array()
 }
 
@@ -41,7 +41,9 @@ $(function () {
         this.get('#/matches/current/', function (context) {
             setCurrentMatchlist();
         });
-        this.get('#/matches/archive/', function (context) {
+        this.get('#/matches/archive/:page/', function (context) {
+            var nPage = this.params['page'];
+            alert(nPage);
             setAllMatchlist();
         });
         this.get('#/worldranking/', function (context) {
@@ -133,25 +135,31 @@ $('.nightmode-switch').click(function () {
 
 function checkDarkmode() {
     var bDarkmode = _SETTINGS['darkmode'];
-    var cCurrentCssFile = $('link[name="bootstrap"]').attr('href');
+
+    var oLinkObj = $('link[name="bootstrap"]');
+    var cCurrentCssFile = $(oLinkObj).attr('href');
 
     if (bDarkmode) {
         if (!cCurrentCssFile.includes('.dark.')) {
-            $('link[name="bootstrap"]').attr('href', 'css/bootstrap/bootstrap.dark.min.css');
-            //$('head').append('<link rel="stylesheet" type="text/css" href="css/darkmode.min.css">');
+            $(oLinkObj).after($(oLinkObj).clone().attr('href', cCurrentCssFile.replace('.light.', '.dark.')));
+            $(oLinkObj).remove();
         }
 
         $('body').addClass("darkmode");
         $('body').removeClass("lightmode");
+        $('html').attr('mode', 'darkmode');
     } else {
         if (cCurrentCssFile.includes('.dark.')) {
-            $('link[name="bootstrap"]').attr('href', 'css/bootstrap/bootstrap.min.css');
-            //$('head link[rel="stylesheet"][href="css/darkmode.min.css"]').remove();
+            // $('link[name="bootstrap"]').attr('href', 'css/bootstrap/bootstrap.min.css');
+            $(oLinkObj).after($(oLinkObj).clone().attr('href', cCurrentCssFile.replace('.dark.', '.light.')));
+            $(oLinkObj).remove();
         }
 
         $('body').removeClass("darkmode");
         $('body').addClass("lightmode");
+        $('html').attr('mode', 'lightmode');
     }
+    // $('link[href="' + cCurrentCssFile + '"]').remove();
 }
 
 function checkTips() {
@@ -351,10 +359,10 @@ function setTimezones() {
 
                     var cMedals = "";
                     if (oWorld.timezone.activity_rank_in_region == 1) {
-                        cMedals = '<span data-container="body" data-toggle="tooltip" data-placement="top" title="Most active primetime in ' + cRegion + ' with ' + oWorld.timezone.activity_per_minute.toFixed(2) + ' kills/deaths per minute" ><i class="icon icon-badge-gold-small"></i> Top Activity in ' + cRegion + '</span>';
+                        cMedals = '<span class="timezone-hint timezone-hint-activity" data-container="body" data-toggle="tooltip" data-placement="top" title="Most active primetime in ' + cRegion + ' with ' + oWorld.timezone.activity_per_minute.toFixed(2) + ' kills/deaths per minute" ><i class="icon icon-badge-gold-small"></i> Top Activity in ' + cRegion + '</span>';
                     }
                     if (oWorld.timezone.kdr_rank_in_region == 1) {
-                        cMedals += '<span data-container="body" data-toggle="tooltip" data-placement="top" title="Strongest KDR primetime in ' + cRegion + ': ' + getKdr(oWorld.timezone.kills, oWorld.timezone.deaths) + ' KDR" ><i class="icon icon-badge-kdr-small"></i> Top KDR in ' + cRegion + '</span>';
+                        cMedals += '<span class="timezone-hint timezone-hint-kdr" data-container="body" data-toggle="tooltip" data-placement="top" title="Strongest KDR primetime in ' + cRegion + ': ' + getKdr(oWorld.timezone.kills, oWorld.timezone.deaths) + ' KDR" ><i class="icon icon-badge-kdr-small"></i> Top KDR in ' + cRegion + '</span>';
                     }
 
                     var cContentBeforeRange = "";
