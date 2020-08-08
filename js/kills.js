@@ -15,7 +15,8 @@ var _SETTINGS = {
     "flattening": true,
     "smoothing": false,
     "darkmode": true,
-    "dismissed_objects": new Array()
+    "dismissed_objects": new Array(),
+    "range_selection": true
 }
 
 var ENUM_VIEW = {
@@ -25,6 +26,11 @@ var ENUM_VIEW = {
     WORLD_RANKING: 3,
     LEGAL: 4,
     TIMEZONES: 5
+}
+
+var _CURRENT_SELECTED_RANGE = {
+    "min": null,
+    "max": null
 }
 
 $(function () {
@@ -165,6 +171,7 @@ function checkDarkmode() {
 function checkTips() {
     checkCopyStatsTip();
     checkTimezonesTip();
+    checkRangeselectionTip();
 }
 
 function checkCopyStatsTip() {
@@ -178,6 +185,29 @@ function checkTimezonesTip() {
         $('#information-addon-timezones').removeClass("hidden");
     }
 }
+
+function checkRangeselectionTip() {
+    if (!_SETTINGS.dismissed_objects.includes("tip_timerangeselection")) {
+        $('#information-addon-time-range-selection').removeClass("hidden");
+    }
+}
+
+$('#button-close-tip-copystats').click(function () {
+    $('#information-addon-copystats').addClass("hidden");
+    _SETTINGS.dismissed_objects.push("tip_copystats");
+    storeSettings();
+});
+$('#button-close-tip-timezones').click(function () {
+    $('#information-addon-timezones').addClass("hidden");
+    _SETTINGS.dismissed_objects.push("tip_timezones");
+    storeSettings();
+});
+$('#button-close-tip-time-range-selection').click(function () {
+    $('#information-addon-time-range-selection').addClass("hidden");
+    _SETTINGS.dismissed_objects.push("tip_timerangeselection");
+    storeSettings();
+});
+
 
 function toggleNightmode() {
     var bDarkmode = _SETTINGS['darkmode'];
@@ -796,6 +826,12 @@ function setMatch(cMatchId) {
             } else if (!oMatch.flattening_requested) {
                 $('#enable-flattening').removeClass('hidden');
             }
+
+            if (_SETTINGS.range_selection) {
+                _CURRENT_SELECTED_RANGE.min = oMatch.match_start;
+                _CURRENT_SELECTED_RANGE.max = oMatch.match_end;
+            }
+
             var nSeriesItemIndex = 0;
             var oFirstSeries = oMatch.series[Object.keys(oMatch.series)[0]];
             for (var cSeriesItemKey in oFirstSeries.series_items) {
@@ -869,7 +905,9 @@ function setMatch(cMatchId) {
 function setStatisticsView(oMatch) {
     _STATISTICS_VIEW = {
         worlds: {},
-        timeslots: {}
+        timeslots: {},
+        start: null,
+        end: null
     };
 
 
@@ -900,6 +938,9 @@ function setStatisticsView(oMatch) {
         for (var nSeriesItemIndex in oSeries.series_items) {
             var oSeriesItem = oSeries.series_items[nSeriesItemIndex];
             var cTimeslotId = oSeriesItem.timeslot_id.toString();
+
+            if (_STATISTICS_VIEW.start == null) _STATISTICS_VIEW.start = oSeriesItem.timeslot_start;
+            _STATISTICS_VIEW.end = oSeriesItem.timeslot_end;
 
             if (!_STATISTICS_VIEW.timeslots[cTimeslotId]) {
                 _STATISTICS_VIEW.timeslots[cTimeslotId] = {
@@ -950,16 +991,6 @@ $('#reload-chart').click(function () {
     setSpecificMatch(_CURRENT_MATCH_ID);
 });
 
-$('#button-close-tip-copystats').click(function () {
-    $('#information-addon-copystats').addClass("hidden");
-    _SETTINGS.dismissed_objects.push("tip_copystats");
-    storeSettings();
-});
-$('#button-close-tip-timezones').click(function () {
-    $('#information-addon-timezones').addClass("hidden");
-    _SETTINGS.dismissed_objects.push("tip_timezones");
-    storeSettings();
-});
 
 function setSeries(oSeries, aWorlds, aMaps, i, cDeathsKills) {
     var bDeaths = cDeathsKills == "Deaths";
@@ -1077,11 +1108,32 @@ function initMatchStatistics(oMatch) {
 }
 
 function setStatistics(nTimeslotId) {
+    $('#match-current-range-selection').addClass('hidden');
     if (nTimeslotId == -1) {
-        //ALL
+        //No timeslot selected
+
+        if (_SETTINGS.range_selection) {
+            var oStats = getStatisticsContainerForTimeRange(_CURRENT_MATCH);
+            $('#match-current-range-selection').removeClass('hidden');
+            $('#match-current-range-selection').text('Current Selection: ' + moment.utc(oStats.start).local().format('YYYY.MM.DD HH:mm') + ' to ' + moment.utc(oStats.end).local().format('YYYY.MM.DD HH:mm') + '')
+
+            for (var nWorldId in oStats.worlds) {
+                var oWorld = oStats.worlds[nWorldId];
+                setStatisticForWorld(oWorld, oStats.worlds);
+            }
+
+        } else {
+            for (var nWorldId in _STATISTICS_VIEW.worlds) {
+                var oWorld = _STATISTICS_VIEW.worlds[nWorldId];
+                setStatisticForWorld(oWorld, _STATISTICS_VIEW.worlds);
+            }
+        }
+
         for (var nWorldId in _STATISTICS_VIEW.worlds) {
             var oWorld = _STATISTICS_VIEW.worlds[nWorldId];
-            setStatisticForWorld(oWorld, _STATISTICS_VIEW.worlds);
+
+            $('.copy-' + oWorld.world_id).attr('data-clipboard-text', getClipboard(_CURRENT_MATCH, oWorld.world_id, null));
+            new Clipboard('.copy-' + oWorld.world_id);
         }
     } else {
         //Timeslot
@@ -1090,6 +1142,60 @@ function setStatistics(nTimeslotId) {
             setStatisticForWorld(oWorld, _STATISTICS_VIEW.timeslots[nTimeslotId].worlds);
         }
     }
+
+}
+
+function getStatisticsContainerForTimeRange(oMatch) {
+
+    var oRetStats = {
+        worlds: {},
+        start: null,
+        end: null
+    }
+
+    for (var cSeriesKey in oMatch.series) {
+        var oSeries = oMatch.series[cSeriesKey];
+        var cMapId = oSeries.map_id;
+        var cWorldId = oSeries.world_arenanet_id;
+
+        if (!oRetStats.worlds[cWorldId]) {
+            oRetStats.worlds[cWorldId] = {
+                world_name: oSeries.world_name,
+                world_id: oSeries.world_arenanet_id,
+                color: oSeries.color,
+                maps: {}
+            }
+        }
+
+        if (!oRetStats.worlds[cWorldId].maps[cMapId]) {
+            oRetStats.worlds[cWorldId].maps[cMapId] = {
+                map_id: oSeries.map_id,
+                kills: 0,
+                deaths: 0,
+                score: 0
+            }
+        }
+
+        for (var nSeriesItemIndex in oSeries.series_items) {
+
+            var oSeriesItem = oSeries.series_items[nSeriesItemIndex];
+            var oStartUTC = Date.UTC(oSeriesItem.timeslot_start);
+            var oSstartUTC = Date.UTC(oSeriesItem.timeslot_end);
+
+            if (moment(_CURRENT_SELECTED_RANGE.min).isSameOrBefore(moment.utc(oSeriesItem.timeslot_start)) &&
+                moment(_CURRENT_SELECTED_RANGE.max).isSameOrAfter(moment.utc(oSeriesItem.timeslot_start))) {
+
+                if (oRetStats.start == null) oRetStats.start = oSeriesItem.timeslot_start;
+                oRetStats.end = oSeriesItem.timeslot_end;
+
+                oRetStats.worlds[cWorldId].maps[cMapId].kills += parseInt(oSeriesItem.kills);
+                oRetStats.worlds[cWorldId].maps[cMapId].deaths += parseInt(oSeriesItem.deaths);
+                oRetStats.worlds[cWorldId].maps[cMapId].score += parseInt(oSeriesItem.score_gain);
+            }
+        }
+    }
+
+    return oRetStats;
 }
 
 function setStatisticForWorld(oWorld, oContext) {
@@ -1148,12 +1254,19 @@ function setStatisticForWorld(oWorld, oContext) {
 
 function getClipboard(oMatch, nWorldId, nTimeslotId) {
     var oWorld = _STATISTICS_VIEW.worlds[nWorldId];
+    var selectedRange = null;
     var cTimestamp = "";
 
     if (nTimeslotId != undefined && nTimeslotId) {
         oWorld = _STATISTICS_VIEW.timeslots[nTimeslotId].worlds[nWorldId];
 
         cTimestamp = " (" + moment.utc(_STATISTICS_VIEW.timeslots[nTimeslotId].timeslot_start).local().format('HH:mm') + '-' + moment.utc(_STATISTICS_VIEW.timeslots[nTimeslotId].timeslot_end).local().format('HH:mm') + ")";
+    } else if (_SETTINGS.range_selection) {
+        selectedRange = getStatisticsContainerForTimeRange(oMatch);
+
+        cTimestamp = " (" + moment.utc(selectedRange.start).local().format('YYYY.MM.DD HH:mm') + '-' + moment.utc(selectedRange.end).local().format('YYYY.MM.DD HH:mm') + ")";
+
+        oWorld = selectedRange.worlds[nWorldId];
     }
 
 
@@ -1202,7 +1315,82 @@ function getClipboard(oMatch, nWorldId, nTimeslotId) {
 
 
 
-    return cWorldOverall + aMaps.join(' | ') + ' - ' + moment.utc(oMatch.last_update).local().fromNow();
+    return trimClipboard(cWorldOverall + aMaps.join(' | ') + ' - ' + moment.utc(oMatch.last_update).local().fromNow());
+}
+
+function trimClipboard(text) {
+    const MAX_LENGTH = 199;
+
+    if (text.length > MAX_LENGTH) {
+        text = text.replace('@ Green', '@GBL');
+        text = text.replace('@ Red', '@RBL');
+        text = text.replace('@ Blue', '@GBL');
+        text = text.replace('@ EBG', '@EB');
+    }
+    if (text.length > MAX_LENGTH) {
+        text = text.replace(' - a minute ago', ' - now');
+        text = text.replace(' - a few seconds ago', ' - now');
+        text = text.replace(' minutes ago', ' min. ago');
+    }
+
+    if (text.length > MAX_LENGTH) {
+        text = text.replace("Blackgate", "BG");
+        text = text.replace("Jade Quarry", "JQ");
+        text = text.replace("Sanctum of Rall", "SoR");
+        text = text.replace("Ehmry Bay", "Eh.B");
+        text = text.replace("Stormbluff Isle", "SbI");
+        text = text.replace("Borlis Pass", "Bor.Pa.");
+        text = text.replace("Tarnished Coast", "Tar.Co.");
+        text = text.replace("Crystal Desert", "Cr.Des.");
+        text = text.replace("Dragonbrand", "Drag.Br.");
+        text = text.replace("Darkhaven", "Da.Hav.");
+        text = text.replace("Maguuma", "Mag.");
+        text = text.replace("Isle of Janthir", "Isl.o.Ja.");
+        text = text.replace("Sea of Sorrows", "SoS");
+        text = text.replace("Devona's Rest", "Dev.R");
+        text = text.replace("Fort Aspenwood", "FA");
+        text = text.replace("Northern Shiverpeaks", "NSP");
+        text = text.replace("Sorrow's Furnace", "SF");
+        text = text.replace("Henge of Denravi", "HoD");
+        text = text.replace("Yak's Bend", "YB");
+        text = text.replace("Anvil Rock", "AR");
+        text = text.replace("Gate of Madness", "GoM");
+        text = text.replace("Desolation", "Deso");
+        text = text.replace("Arborstone", "Arb.St.");
+        text = text.replace("Far Shiverpeaks", "FSP");
+        text = text.replace("Ring of Fire", "RoF");
+        text = text.replace("Gunnar's Hold", "GH");
+        text = text.replace("Fissure of Woe", "FoW");
+        text = text.replace("Aurora Glade", "AG");
+        text = text.replace("Fort Ranik", "FR");
+        text = text.replace("Baruch Bay", "BB");
+        text = text.replace("Underworld", "UW");
+        text = text.replace("Drakkar Lake", "Drakkar");
+        text = text.replace("Piken Square", "Piken");
+        text = text.replace("Blacktide", "BT");
+        text = text.replace("Seafarer's Rest", "SFR");
+        text = text.replace("Abaddon's Mouth", "Aba");
+        text = text.replace("Riverside", "RS");
+        text = text.replace("Elona Reach", "Elona");
+        text = text.replace("Miller's Sound", "Miller");
+        text = text.replace("Jade Sea", "JS");
+        text = text.replace("Vizunah Square", "Vizu");
+        text = text.replace("Whiteside Ridge", "WSR");
+        text = text.replace("Augury Rock", "AR");
+        text = text.replace("Ruins of Surmia", "RoS");
+        text = text.replace("Dzagonur", "Dzago");
+
+    }
+    if (text.length > MAX_LENGTH) {
+        text = text.replaceAll(' kd ', '');
+        text = text.replaceAll('% PPK', '%PPK');
+    }
+    if (text.length > MAX_LENGTH) {
+        text = text.replaceAll(" @", "@");
+        text = text.replaceAll(" |", "|");
+    }
+
+    return text.trim();
 }
 
 
@@ -1272,12 +1460,19 @@ function getChartOptions() {
         },
         xAxis: {
             type: 'datetime',
-            range: 24 * 60 * 60 * 1000,
+            //range: 24 * 60 * 60 * 1000,
             labels: {
                 align: 'left',
                 formatter: function () {
                     var oCorrectedDate = moment.utc(this.value).add(15, 'minutes').local().format("HH:mm");
                     return oCorrectedDate;
+                }
+            },
+            events: {
+                setExtremes: function (event) {
+                    _CURRENT_SELECTED_RANGE.min = new Date(event.min);
+                    _CURRENT_SELECTED_RANGE.max = new Date(event.max);
+                    setStatistics(-1);
                 }
             }
         },
@@ -1560,4 +1755,12 @@ Number.prototype.toFixedLeading = function (leadingZeroes, fractionDigits) {
 
 Number.prototype.toThousandSeparator = function () {
     return this.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+
+String.prototype.replaceAll = function (find, replacement) {
+    var txt = this;
+    while (txt.includes(find))
+        txt = txt.replace(find, replacement);
+
+    return txt;
 }

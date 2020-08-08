@@ -28,8 +28,6 @@ if (isset($_COOKIE["settings"]) && !empty($_COOKIE["settings"])) {
     content="werdes">
   <title>WvW Kills</title>
   <!-- Bootstrap core CSS -->
-  <link href="https://fonts.googleapis.com/css?family=Cinzel|Roboto:300,400,500,700"
-    rel="stylesheet">
   <link rel="stylesheet"
     name="bootstrap"
     type="text/css"
@@ -182,6 +180,30 @@ if (isset($_COOKIE["settings"]) && !empty($_COOKIE["settings"])) {
       <h5 id="match-last-update"></h5>
       <h2 class="pull-left"
         id="match-title"></h2>
+      <span class="pull-left label label-warning"
+        id="match-current-range-selection"></span>
+      <div class="information-addon hidden"
+        id="information-addon-time-range-selection">
+
+        <div class="alert alert-info"
+          role="alert">
+          <button type="button"
+            id="button-close-tip-time-range-selection"
+            class="close"
+            data-dismiss="alert"
+            aria-label="Close">
+            <span aria-hidden="true">×</span>
+          </button>
+          <span class="glyphicon glyphicon-info-sign"></span> <strong>New</strong>
+          <br />
+          You can now filter stats for a selected time range by moving or resizing the <strong>slider</strong>
+          underneath the graph.
+          <br />
+          You can turn that function <i>off</i> under <strong>Options -> Values by Range Selection</strong>
+
+        </div>
+      </div>
+
       <a class="get-shortlink btn btn-success pull-right no-nightmode"
         data-toggle="modal"
         data-target="#modal-shortlink"
@@ -210,6 +232,11 @@ if (isset($_COOKIE["settings"]) && !empty($_COOKIE["settings"])) {
               data-target="smoothing"
               data-value="false">
               <span class="glyphicon glyphicon-ok"></span> Smoothing</a>
+          </li>
+          <li class="checkable">
+            <a href="javascript:void(0);"
+              data-target="range_selection"
+              data-value="true"><span class="glyphicon glyphicon-ok"></span> Values by Range Selection</a>
           </li>
         </ul>
       </div>
